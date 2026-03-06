@@ -68,13 +68,13 @@ export default function RepoScanner({ onScanned }) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Input Section */}
-      <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6">
-        <h2 className="text-lg font-semibold text-white mb-1">
-          🔍 Repository Vulnerability Scanner
+      <div className="card-glass rounded-lg p-6">
+        <h2 className="text-base font-semibold text-white mb-0.5">
+          Repository Vulnerability Scanner
         </h2>
-        <p className="text-sm text-slate-400 mb-4">
+        <p className="text-sm text-slate-500 mb-4">
           Enter a GitHub repository URL to scan for dependency vulnerabilities
           using OSV intelligence.
         </p>
@@ -85,17 +85,21 @@ export default function RepoScanner({ onScanned }) {
             value={repoUrl}
             onChange={(e) => setRepoUrl(e.target.value)}
             placeholder="https://github.com/username/repository"
-            className="flex-1 bg-slate-900/50 border border-slate-600/30 rounded-lg px-4 py-2.5 text-slate-200 text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            className="flex-1 bg-slate-900/60 border border-slate-700/40 rounded-md px-4 py-2.5 text-slate-200 text-sm placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/40"
             onKeyDown={(e) => e.key === "Enter" && handleScan()}
           />
           <button
             onClick={handleScan}
             disabled={loading || !repoUrl.trim()}
-            className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white text-sm font-semibold rounded-lg shadow-lg shadow-blue-600/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all whitespace-nowrap"
+            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-md shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
           >
             {loading ? (
               <span className="flex items-center gap-2">
-                <span className="animate-spin">⏳</span> Scanning...
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Scanning...
               </span>
             ) : (
               "Scan Repository"
@@ -104,14 +108,17 @@ export default function RepoScanner({ onScanned }) {
         </div>
 
         {loading && (
-          <div className="mt-4 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg text-blue-300 text-sm">
-            ⏳ Cloning repository, extracting dependencies, and querying CVE
-            databases... This may take a moment.
+          <div className="mt-4 p-3 bg-blue-500/8 border border-blue-500/15 rounded-md text-blue-300 text-sm flex items-center gap-2">
+            <svg className="w-4 h-4 animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+            Cloning repository, extracting dependencies, and querying CVE databases...
           </div>
         )}
 
         {error && (
-          <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+          <div className="mt-4 p-3 bg-red-500/8 border border-red-500/15 rounded-md text-red-400 text-sm">
             {error}
           </div>
         )}
@@ -121,13 +128,13 @@ export default function RepoScanner({ onScanned }) {
       {scanResult && (
         <div className="space-y-4">
           {/* Summary Card */}
-          <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6">
+          <div className="card-glass rounded-lg p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-white">
+              <h3 className="text-base font-semibold text-white">
                 Scan Results
               </h3>
               <div
-                className={`text-3xl font-bold ${scoreColor(
+                className={`text-2xl font-bold ${scoreColor(
                   scanResult.security_score
                 )}`}
               >
@@ -135,66 +142,66 @@ export default function RepoScanner({ onScanned }) {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-              <div className="bg-slate-900/50 rounded-lg p-3 text-center">
-                <div className="text-xl font-bold text-blue-400">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+              <div className="bg-slate-900/40 border border-slate-700/30 rounded-md p-3 text-center">
+                <div className="text-lg font-semibold text-blue-400">
                   {scanResult.dependencies_scanned}
                 </div>
-                <div className="text-xs text-slate-400">Dependencies</div>
+                <div className="text-[11px] text-slate-500 font-medium">Dependencies</div>
               </div>
-              <div className="bg-slate-900/50 rounded-lg p-3 text-center">
-                <div className="text-xl font-bold text-red-400">
+              <div className="bg-slate-900/40 border border-slate-700/30 rounded-md p-3 text-center">
+                <div className="text-lg font-semibold text-red-400">
                   {scanResult.critical_count}
                 </div>
-                <div className="text-xs text-slate-400">Critical</div>
+                <div className="text-[11px] text-slate-500 font-medium">Critical</div>
               </div>
-              <div className="bg-slate-900/50 rounded-lg p-3 text-center">
-                <div className="text-xl font-bold text-orange-400">
+              <div className="bg-slate-900/40 border border-slate-700/30 rounded-md p-3 text-center">
+                <div className="text-lg font-semibold text-orange-400">
                   {scanResult.high_count}
                 </div>
-                <div className="text-xs text-slate-400">High</div>
+                <div className="text-[11px] text-slate-500 font-medium">High</div>
               </div>
-              <div className="bg-slate-900/50 rounded-lg p-3 text-center">
-                <div className="text-xl font-bold text-yellow-400">
+              <div className="bg-slate-900/40 border border-slate-700/30 rounded-md p-3 text-center">
+                <div className="text-lg font-semibold text-yellow-400">
                   {scanResult.medium_count}
                 </div>
-                <div className="text-xs text-slate-400">Medium</div>
+                <div className="text-[11px] text-slate-500 font-medium">Medium</div>
               </div>
-              <div className="bg-slate-900/50 rounded-lg p-3 text-center">
-                <div className="text-xl font-bold text-green-400">
+              <div className="bg-slate-900/40 border border-slate-700/30 rounded-md p-3 text-center">
+                <div className="text-lg font-semibold text-green-400">
                   {scanResult.low_count}
                 </div>
-                <div className="text-xs text-slate-400">Low</div>
+                <div className="text-[11px] text-slate-500 font-medium">Low</div>
               </div>
             </div>
           </div>
 
           {/* Vulnerability List */}
           {scanResult.vulnerabilities?.length > 0 ? (
-            <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6">
-              <h3 className="text-sm font-semibold text-slate-300 mb-4">
+            <div className="card-glass rounded-lg p-6">
+              <h3 className="text-sm font-medium text-slate-400 mb-4">
                 Vulnerabilities ({scanResult.vulnerabilities.length})
               </h3>
 
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {scanResult.vulnerabilities.map((vuln, idx) => (
                   <div
                     key={idx}
-                    className="bg-slate-900/50 border border-slate-700/30 rounded-lg p-4"
+                    className="bg-slate-900/40 border border-slate-700/30 rounded-md p-4"
                   >
                     <div className="flex items-start justify-between mb-2">
                       <div>
-                        <span className="font-mono text-sm text-white font-semibold">
+                        <span className="font-mono text-sm text-white font-medium">
                           {vuln.package}
                         </span>
                         {vuln.version && vuln.version !== "unknown" && (
-                          <span className="ml-2 text-xs text-slate-400">
+                          <span className="ml-2 text-xs text-slate-500">
                             v{vuln.version}
                           </span>
                         )}
                       </div>
                       <span
-                        className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
+                        className={`px-2 py-0.5 rounded text-[11px] font-semibold border ${
                           severityColors[vuln.severity] ||
                           severityColors.UNKNOWN
                         }`}
@@ -203,13 +210,13 @@ export default function RepoScanner({ onScanned }) {
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-4 text-xs text-slate-400 mb-2">
+                    <div className="flex items-center gap-4 text-xs text-slate-500 mb-2">
                       <span>CVE: {vuln.cve}</span>
                       {vuln.cvss > 0 && <span>CVSS: {vuln.cvss}</span>}
                     </div>
 
                     {vuln.description && (
-                      <p className="text-xs text-slate-400 line-clamp-2 mb-3">
+                      <p className="text-xs text-slate-500 line-clamp-2 mb-3">
                         {vuln.description}
                       </p>
                     )}
@@ -219,20 +226,20 @@ export default function RepoScanner({ onScanned }) {
                       <button
                         onClick={() => handleRemediate(vuln, idx)}
                         disabled={loadingRemediation[idx]}
-                        className="text-xs px-3 py-1.5 bg-purple-500/10 border border-purple-500/20 rounded-lg text-purple-300 hover:bg-purple-500/20 transition disabled:opacity-50"
+                        className="text-xs px-3 py-1.5 bg-indigo-500/8 border border-indigo-500/20 rounded-md text-indigo-300 hover:bg-indigo-500/15 transition disabled:opacity-50 font-medium"
                       >
                         {loadingRemediation[idx]
-                          ? "🤖 Getting AI fix..."
-                          : "🤖 Get AI Remediation"}
+                          ? "Getting AI fix..."
+                          : "Get AI Remediation"}
                       </button>
                     ) : remediations[idx].error ? (
-                      <div className="text-xs text-red-400 p-2 bg-red-500/10 rounded-lg">
+                      <div className="text-xs text-red-400 p-2 bg-red-500/8 rounded-md">
                         Failed to get remediation: {remediations[idx].error}
                       </div>
                     ) : (
-                      <div className="mt-2 p-3 bg-purple-500/5 border border-purple-500/10 rounded-lg space-y-2">
+                      <div className="mt-2 p-3 bg-indigo-500/5 border border-indigo-500/10 rounded-md space-y-2">
                         <div className="text-xs">
-                          <span className="text-purple-300 font-semibold">
+                          <span className="text-indigo-300 font-semibold">
                             Explanation:{" "}
                           </span>
                           <span className="text-slate-300">
@@ -240,7 +247,7 @@ export default function RepoScanner({ onScanned }) {
                           </span>
                         </div>
                         <div className="text-xs">
-                          <span className="text-purple-300 font-semibold">
+                          <span className="text-indigo-300 font-semibold">
                             Fix:{" "}
                           </span>
                           <span className="text-slate-300">
@@ -249,10 +256,10 @@ export default function RepoScanner({ onScanned }) {
                         </div>
                         {remediations[idx].recommended_version && (
                           <div className="text-xs">
-                            <span className="text-purple-300 font-semibold">
+                            <span className="text-indigo-300 font-semibold">
                               Upgrade to:{" "}
                             </span>
-                            <span className="text-green-300 font-mono">
+                            <span className="text-emerald-300 font-mono">
                               {remediations[idx].recommended_version}
                             </span>
                           </div>
@@ -264,12 +271,14 @@ export default function RepoScanner({ onScanned }) {
               </div>
             </div>
           ) : (
-            <div className="bg-green-500/5 border border-green-500/20 rounded-xl p-6 text-center">
-              <span className="text-4xl">🎉</span>
-              <h3 className="text-lg font-semibold text-green-400 mt-2">
-                No Vulnerabilities Found!
+            <div className="bg-emerald-500/5 border border-emerald-500/15 rounded-lg p-6 text-center">
+              <svg className="w-10 h-10 text-emerald-400 mx-auto mb-2" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />
+              </svg>
+              <h3 className="text-base font-semibold text-emerald-400">
+                No Vulnerabilities Found
               </h3>
-              <p className="text-sm text-slate-400 mt-1">
+              <p className="text-sm text-slate-500 mt-1">
                 All {scanResult.dependencies_scanned} dependencies passed the
                 security check.
               </p>

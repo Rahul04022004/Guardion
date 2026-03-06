@@ -34,77 +34,75 @@ export default function Charts({ promptMetrics, repoMetrics }) {
   const hasPromptData = promptData.length > 0;
   const hasVulnData = vulnData.some((d) => d.count > 0);
 
+  const tooltipStyle = {
+    background: "#111827",
+    border: "1px solid rgba(51, 65, 85, 0.5)",
+    borderRadius: "6px",
+    color: "#e2e8f0",
+    fontSize: "12px",
+    padding: "8px 12px",
+  };
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {/* Prompt Risk Distribution */}
-      <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6">
-        <h3 className="text-sm font-semibold text-slate-300 mb-4">
+      <div className="card-glass rounded-lg p-5">
+        <h3 className="text-sm font-medium text-slate-400 mb-4">
           Prompt Risk Distribution
         </h3>
         {hasPromptData ? (
-          <ResponsiveContainer width="100%" height={250}>
+          <ResponsiveContainer width="100%" height={240}>
             <PieChart>
               <Pie
                 data={promptData}
                 cx="50%"
                 cy="50%"
                 innerRadius={60}
-                outerRadius={90}
-                paddingAngle={5}
+                outerRadius={85}
+                paddingAngle={4}
                 dataKey="value"
+                strokeWidth={0}
               >
                 {promptData.map((entry, index) => (
                   <Cell key={index} fill={entry.color} />
                 ))}
               </Pie>
-              <Tooltip
-                contentStyle={{
-                  background: "#1e293b",
-                  border: "1px solid #334155",
-                  borderRadius: "8px",
-                  color: "#e2e8f0",
-                }}
-              />
+              <Tooltip contentStyle={tooltipStyle} />
               <Legend
                 formatter={(value) => (
-                  <span style={{ color: "#94a3b8" }}>{value}</span>
+                  <span style={{ color: "#94a3b8", fontSize: "12px" }}>{value}</span>
                 )}
               />
             </PieChart>
           </ResponsiveContainer>
         ) : (
-          <div className="flex items-center justify-center h-[250px] text-slate-500 text-sm">
-            No prompt data yet. Try analyzing a prompt!
+          <div className="flex items-center justify-center h-[240px] text-slate-600 text-sm">
+            No prompt data yet
           </div>
         )}
       </div>
 
       {/* Vulnerability Severity */}
-      <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6">
-        <h3 className="text-sm font-semibold text-slate-300 mb-4">
+      <div className="card-glass rounded-lg p-5">
+        <h3 className="text-sm font-medium text-slate-400 mb-4">
           Vulnerability Severity
         </h3>
         {hasVulnData ? (
-          <ResponsiveContainer width="100%" height={250}>
+          <ResponsiveContainer width="100%" height={240}>
             <BarChart data={vulnData}>
               <XAxis
                 dataKey="name"
-                tick={{ fill: "#94a3b8", fontSize: 12 }}
-                axisLine={{ stroke: "#334155" }}
+                tick={{ fill: "#64748b", fontSize: 11 }}
+                axisLine={{ stroke: "#1e293b" }}
+                tickLine={false}
               />
               <YAxis
-                tick={{ fill: "#94a3b8", fontSize: 12 }}
-                axisLine={{ stroke: "#334155" }}
+                tick={{ fill: "#64748b", fontSize: 11 }}
+                axisLine={{ stroke: "#1e293b" }}
+                tickLine={false}
               />
-              <Tooltip
-                contentStyle={{
-                  background: "#1e293b",
-                  border: "1px solid #334155",
-                  borderRadius: "8px",
-                  color: "#e2e8f0",
-                }}
-              />
-              <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+              <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "rgba(51, 65, 85, 0.2)" }} />
+              <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                 {vulnData.map((entry, index) => (
                   <Cell key={index} fill={entry.color} />
                 ))}
@@ -112,8 +110,8 @@ export default function Charts({ promptMetrics, repoMetrics }) {
             </BarChart>
           </ResponsiveContainer>
         ) : (
-          <div className="flex items-center justify-center h-[250px] text-slate-500 text-sm">
-            No vulnerability data yet. Try scanning a repository!
+          <div className="flex items-center justify-center h-[240px] text-slate-600 text-sm">
+            No vulnerability data yet
           </div>
         )}
       </div>
