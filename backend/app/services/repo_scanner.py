@@ -3,16 +3,21 @@ Repository Vulnerability Scanner Service
 Clones a GitHub repo, extracts dependencies, and queries OSV API for CVEs.
 """
 
+import asyncio
 import json
+import logging
 import os
 import re
 import shutil
+import subprocess
 import tempfile
 from pathlib import Path
 
 import httpx
 
 from app.config import settings
+
+logger = logging.getLogger("guardion.scanner")
 
 
 # ──────────────────── Dependency Extraction ────────────────────
@@ -101,9 +106,10 @@ def extract_dependencies(repo_path: str) -> list[dict]:
 
 # ──────────────────── OSV API Lookup ────────────────────
 
-async def query_osv(package_name: str, version: str, ecosystem: str) -> list[dict]:
+async def query_osv(client: httpx.AsyncClient, package_name: str, version: str, ecosystem: str) -> list[dict]:
     """
     Query the OSV.dev API for known vulnerabilities of a specific package.
+    Uses a shared httpx client for connection pooling.
 
     Returns a list of vulnerability dicts with:
       - cve_id, cvss_score, severity, description
@@ -121,71 +127,70 @@ async def query_osv(package_name: str, version: str, ecosystem: str) -> list[dic
     results: list[dict] = []
 
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.post(settings.OSV_API_URL, json=payload)
-            if resp.status_code != 200:
-                return results
+        resp = await client.post(settings.OSV_API_URL, json=payload)
+        if resp.status_code != 200:
+            return results
 
-            data = resp.json()
-            vulns = data.get("vulns", [])
+        data = resp.json()
+        vulns = data.get("vulns", [])
 
-            for vuln in vulns:
-                # Extract CVE ID from aliases
-                cve_id = "N/A"
-                for alias in vuln.get("aliases", []):
-                    if alias.startswith("CVE-"):
-                        cve_id = alias
-                        break
+        for vuln in vulns:
+            # Extract CVE ID from aliases
+            cve_id = "N/A"
+            for alias in vuln.get("aliases", []):
+                if alias.startswith("CVE-"):
+                    cve_id = alias
+                    break
 
-                # Extract CVSS score and severity from severity list
-                cvss_score = 0.0
-                severity_label = "UNKNOWN"
-                for sev in vuln.get("severity", []):
-                    if sev.get("type") == "CVSS_V3":
-                        score_str = sev.get("score", "")
-                        # Try to extract numeric score from CVSS vector
-                        try:
-                            # OSV sometimes gives the vector string; parse base score
-                            if "/" in score_str:
-                                # It's a vector string, not a raw score
-                                pass
-                            else:
-                                cvss_score = float(score_str)
-                        except (ValueError, TypeError):
+            # Extract CVSS score and severity from severity list
+            cvss_score = 0.0
+            severity_label = "UNKNOWN"
+            for sev in vuln.get("severity", []):
+                if sev.get("type") == "CVSS_V3":
+                    score_str = sev.get("score", "")
+                    # Try to extract numeric score from CVSS vector
+                    try:
+                        # OSV sometimes gives the vector string; parse base score
+                        if "/" in score_str:
+                            # It's a vector string, not a raw score
                             pass
+                        else:
+                            cvss_score = float(score_str)
+                    except (ValueError, TypeError):
+                        pass
 
-                # Derive severity from CVSS score if available
-                if cvss_score >= 9.0:
-                    severity_label = "CRITICAL"
-                elif cvss_score >= 7.0:
-                    severity_label = "HIGH"
-                elif cvss_score >= 4.0:
-                    severity_label = "MEDIUM"
-                elif cvss_score > 0:
-                    severity_label = "LOW"
-                else:
-                    # Fallback: check database_specific severity
-                    db_specific = vuln.get("database_specific", {})
-                    raw_sev = db_specific.get("severity", "").upper()
-                    if raw_sev in ("CRITICAL", "HIGH", "MEDIUM", "LOW"):
-                        severity_label = raw_sev
-                        # Assign estimated score
-                        cvss_score = {
-                            "CRITICAL": 9.5, "HIGH": 7.5,
-                            "MEDIUM": 5.0, "LOW": 2.5
-                        }.get(severity_label, 0.0)
+            # Derive severity from CVSS score if available
+            if cvss_score >= 9.0:
+                severity_label = "CRITICAL"
+            elif cvss_score >= 7.0:
+                severity_label = "HIGH"
+            elif cvss_score >= 4.0:
+                severity_label = "MEDIUM"
+            elif cvss_score > 0:
+                severity_label = "LOW"
+            else:
+                # Fallback: check database_specific severity
+                db_specific = vuln.get("database_specific", {})
+                raw_sev = db_specific.get("severity", "").upper()
+                if raw_sev in ("CRITICAL", "HIGH", "MEDIUM", "LOW"):
+                    severity_label = raw_sev
+                    # Assign estimated score
+                    cvss_score = {
+                        "CRITICAL": 9.5, "HIGH": 7.5,
+                        "MEDIUM": 5.0, "LOW": 2.5
+                    }.get(severity_label, 0.0)
 
-                description = vuln.get("summary", vuln.get("details", ""))[:500]
+            description = vuln.get("summary", vuln.get("details", ""))[:500]
 
-                results.append({
-                    "cve_id": cve_id,
-                    "cvss_score": cvss_score,
-                    "severity": severity_label,
-                    "description": description,
-                })
+            results.append({
+                "cve_id": cve_id,
+                "cvss_score": cvss_score,
+                "severity": severity_label,
+                "description": description,
+            })
 
-    except httpx.HTTPError:
-        pass  # Network errors are silently skipped for hackathon resilience
+    except httpx.HTTPError as e:
+        logger.debug(f"OSV query failed for {package_name}: {e}")
 
     return results
 
@@ -195,21 +200,41 @@ async def query_osv(package_name: str, version: str, ecosystem: str) -> list[dic
 def clone_repo(repo_url: str) -> str:
     """
     Clone a GitHub repo to a temp directory. Returns the local path.
-    Uses shallow clone (depth=1) for speed.
+    Uses shallow clone (depth=1) for speed. Falls back to git CLI.
     """
     temp_dir = tempfile.mkdtemp(prefix="guardion_", dir=None)
+    logger.info(f"Cloning {repo_url} → {temp_dir}")
 
+    # Try GitPython first
     try:
         import git
         git.Repo.clone_from(
             repo_url,
             temp_dir,
-            depth=1,  # Shallow clone for speed
+            depth=1,
             single_branch=True,
         )
+        logger.info("Clone completed (GitPython)")
+        return temp_dir
     except Exception as e:
-        # Fallback: try git CLI
-        os.system(f'git clone --depth 1 "{repo_url}" "{temp_dir}" 2>/dev/null')
+        logger.warning(f"GitPython clone failed: {e}, trying git CLI")
+
+    # Fallback: git CLI (works on both Windows and Linux)
+    try:
+        result = subprocess.run(
+            ["git", "clone", "--depth", "1", "--single-branch", repo_url, temp_dir],
+            capture_output=True,
+            text=True,
+            timeout=120,  # 2 minute timeout
+        )
+        if result.returncode == 0:
+            logger.info("Clone completed (git CLI)")
+        else:
+            logger.error(f"git CLI clone failed: {result.stderr}")
+    except subprocess.TimeoutExpired:
+        logger.error("git clone timed out after 120 seconds")
+    except FileNotFoundError:
+        logger.error("git command not found — install git")
 
     return temp_dir
 
@@ -264,28 +289,58 @@ async def scan_repository(repo_url: str) -> dict:
     End-to-end repository vulnerability scan:
       1. Clone repo
       2. Extract dependencies
-      3. Query OSV for each dependency
+      3. Query OSV for each dependency (parallelized)
       4. Compute security score
       5. Cleanup
 
     Returns a dict matching RepoScanResponse schema.
     """
+    logger.info(f"Starting scan for {repo_url}")
     repo_path = clone_repo(repo_url)
 
     try:
         # Step 2: Extract dependencies
         deps = extract_dependencies(repo_path)
+        logger.info(f"Found {len(deps)} dependencies")
 
-        # Step 3: Query OSV for vulnerabilities
+        if not deps:
+            logger.warning("No dependencies found in the repository")
+            return {
+                "repo_url": repo_url,
+                "dependencies_scanned": 0,
+                "vulnerabilities": [],
+                "critical_count": 0,
+                "high_count": 0,
+                "medium_count": 0,
+                "low_count": 0,
+                "security_score": 100,
+            }
+
+        # Step 3: Query OSV for vulnerabilities (parallel, batched)
         all_vulns: list[dict] = []
-        for dep in deps:
-            osv_results = await query_osv(dep["name"], dep["version"], dep["ecosystem"])
-            for vuln in osv_results:
-                all_vulns.append({
-                    "package": dep["name"],
-                    "version": dep["version"],
-                    **vuln,
-                })
+        BATCH_SIZE = 10  # Query 10 deps at a time to avoid overwhelming OSV
+
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            for i in range(0, len(deps), BATCH_SIZE):
+                batch = deps[i : i + BATCH_SIZE]
+                tasks = [
+                    query_osv(client, dep["name"], dep["version"], dep["ecosystem"])
+                    for dep in batch
+                ]
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+
+                for dep, result in zip(batch, results):
+                    if isinstance(result, Exception):
+                        logger.debug(f"OSV query error for {dep['name']}: {result}")
+                        continue
+                    for vuln in result:
+                        all_vulns.append({
+                            "package": dep["name"],
+                            "version": dep["version"],
+                            **vuln,
+                        })
+
+        logger.info(f"Found {len(all_vulns)} vulnerabilities across {len(deps)} deps")
 
         # Step 4: Calculate security score
         score, counts = calculate_security_score(all_vulns)
