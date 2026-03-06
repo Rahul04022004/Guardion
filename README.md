@@ -60,7 +60,7 @@ Paste any **GitHub repository URL** and Guardion will:
 │   • Prompt tester        │       │  │  • Context-aware AI    │  │
 │   • Repo scanner UI      │       │  │  • Smart remediation   │  │
 │   • Analytics charts     │       │  └────────────────────────┘  │
-└──────────────────────────┘       │        SQLite Database       │
+└──────────────────────────┘       │       MongoDB Atlas          │
                                    └──────────────────────────────┘
 ```
 
@@ -231,15 +231,18 @@ Guardion/
 │   │   │   ├── repo_routes.py        # Repo scanning & remediation
 │   │   │   └── dashboard_routes.py   # Dashboard metrics
 │   │   ├── models/
-│   │   │   ├── db_models.py          # SQLAlchemy models
 │   │   │   └── schemas.py            # Pydantic request/response schemas
+│   │   ├── db/
+│   │   │   └── mongodb.py            # MongoDB Atlas connection & collections
 │   │   ├── services/
 │   │   │   ├── prompt_analyzer.py    # Regex + combined analysis pipeline
 │   │   │   ├── gemini_integration.py # Gemini AI context-aware analysis
 │   │   │   ├── gemini_service.py     # AI-powered vulnerability remediation
-│   │   │   └── repo_scanner.py       # Git clone, parse deps, query OSV
+│   │   │   ├── repo_scanner.py       # Git clone, parse deps, query OSV
+│   │   │   ├── owasp_service.py      # OWASP Top 10 classification engine
+│   │   │   ├── auth_service.py       # JWT auth + bcrypt password hashing
+│   │   │   └── nvd_service.py        # NVD/CVE enrichment service
 │   │   ├── config.py                 # Environment & app settings
-│   │   ├── database.py               # SQLite + SQLAlchemy setup
 │   │   └── main.py                   # FastAPI app entry point
 │   ├── requirements.txt
 │   └── .env.example
@@ -272,7 +275,7 @@ Guardion/
 
 | Layer | Technology |
 |-------|-----------|
-| **Backend** | Python, FastAPI, SQLAlchemy, SQLite, Uvicorn |
+| **Backend** | Python, FastAPI, MongoDB Atlas, PyMongo, Uvicorn |
 | **AI Engine** | Google Gemini 2.0 Flash (`google-generativeai` SDK) |
 | **Vuln Database** | OSV API (Open Source Vulnerabilities) |
 | **Frontend** | React 18, Vite, Tailwind CSS, Recharts |
@@ -286,8 +289,11 @@ Guardion/
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `GEMINI_API_KEY` | Yes | Google Gemini API key for AI analysis |
+| `MONGO_URI` | Yes | MongoDB Atlas connection string |
+| `JWT_SECRET` | Yes | Secret key for JWT token signing |
+| `NVD_API_KEY` | No | NVD API key for CVE enrichment |
 
-Create `backend/.env` with your key. The `.gitignore` ensures it's never committed.
+Create `backend/.env` with your keys. The `.gitignore` ensures they're never committed.
 
 ---
 

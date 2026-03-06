@@ -1,4 +1,4 @@
-import {
+﻿import {
   PieChart,
   Pie,
   Cell,
@@ -10,44 +10,46 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+import { motion } from "framer-motion";
 
 /**
- * Charts Component
- * Displays prompt risk distribution and vulnerability severity charts.
+ * Charts Component — Cybersecurity themed with orange/cyan palette.
  */
 export default function Charts({ promptMetrics, repoMetrics }) {
-  // Prompt decision distribution data
   const promptData = [
-    { name: "Allowed", value: promptMetrics?.allowed || 0, color: "#34d399" },
-    { name: "Warnings", value: promptMetrics?.warnings || 0, color: "#fbbf24" },
-    { name: "Blocked", value: promptMetrics?.blocked || 0, color: "#f87171" },
+    { name: "Allowed", value: promptMetrics?.allowed || 0, color: "#00FFFF" },
+    { name: "Warnings", value: promptMetrics?.warnings || 0, color: "#FF6600" },
+    { name: "Blocked", value: promptMetrics?.blocked || 0, color: "#ef4444" },
   ].filter((d) => d.value > 0);
 
-  // Vulnerability severity distribution
   const vulnData = [
     { name: "Critical", count: repoMetrics?.critical || 0, color: "#ef4444" },
-    { name: "High", count: repoMetrics?.high || 0, color: "#f97316" },
+    { name: "High", count: repoMetrics?.high || 0, color: "#FF6600" },
     { name: "Medium", count: repoMetrics?.medium || 0, color: "#eab308" },
-    { name: "Low", count: repoMetrics?.low || 0, color: "#22c55e" },
+    { name: "Low", count: repoMetrics?.low || 0, color: "#00FFFF" },
   ];
 
   const hasPromptData = promptData.length > 0;
   const hasVulnData = vulnData.some((d) => d.count > 0);
 
   const tooltipStyle = {
-    background: "#111827",
-    border: "1px solid rgba(51, 65, 85, 0.5)",
-    borderRadius: "6px",
-    color: "#e2e8f0",
+    background: "#121212",
+    border: "1px solid rgba(255,255,255,0.08)",
+    borderRadius: "8px",
+    color: "#fff",
     fontSize: "12px",
     padding: "8px 12px",
   };
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {/* Prompt Risk Distribution */}
-      <div className="card-glass rounded-lg p-5">
-        <h3 className="text-sm font-medium text-slate-400 mb-4">
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="bg-brand-card border border-white/5 rounded-lg p-5"
+      >
+        <h3 className="text-sm font-medium text-gray-400 mb-4">
           Prompt Risk Distribution
         </h3>
         {hasPromptData ? (
@@ -70,21 +72,25 @@ export default function Charts({ promptMetrics, repoMetrics }) {
               <Tooltip contentStyle={tooltipStyle} />
               <Legend
                 formatter={(value) => (
-                  <span style={{ color: "#94a3b8", fontSize: "12px" }}>{value}</span>
+                  <span style={{ color: "#9ca3af", fontSize: "12px" }}>{value}</span>
                 )}
               />
             </PieChart>
           </ResponsiveContainer>
         ) : (
-          <div className="flex items-center justify-center h-[240px] text-slate-600 text-sm">
+          <div className="flex items-center justify-center h-[240px] text-gray-600 text-sm">
             No prompt data yet
           </div>
         )}
-      </div>
+      </motion.div>
 
-      {/* Vulnerability Severity */}
-      <div className="card-glass rounded-lg p-5">
-        <h3 className="text-sm font-medium text-slate-400 mb-4">
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.1 }}
+        className="bg-brand-card border border-white/5 rounded-lg p-5"
+      >
+        <h3 className="text-sm font-medium text-gray-400 mb-4">
           Vulnerability Severity
         </h3>
         {hasVulnData ? (
@@ -92,16 +98,16 @@ export default function Charts({ promptMetrics, repoMetrics }) {
             <BarChart data={vulnData}>
               <XAxis
                 dataKey="name"
-                tick={{ fill: "#64748b", fontSize: 11 }}
-                axisLine={{ stroke: "#1e293b" }}
+                tick={{ fill: "#6b7280", fontSize: 11 }}
+                axisLine={{ stroke: "#1a1a1a" }}
                 tickLine={false}
               />
               <YAxis
-                tick={{ fill: "#64748b", fontSize: 11 }}
-                axisLine={{ stroke: "#1e293b" }}
+                tick={{ fill: "#6b7280", fontSize: 11 }}
+                axisLine={{ stroke: "#1a1a1a" }}
                 tickLine={false}
               />
-              <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "rgba(51, 65, 85, 0.2)" }} />
+              <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
               <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                 {vulnData.map((entry, index) => (
                   <Cell key={index} fill={entry.color} />
@@ -110,11 +116,11 @@ export default function Charts({ promptMetrics, repoMetrics }) {
             </BarChart>
           </ResponsiveContainer>
         ) : (
-          <div className="flex items-center justify-center h-[240px] text-slate-600 text-sm">
+          <div className="flex items-center justify-center h-[240px] text-gray-600 text-sm">
             No vulnerability data yet
           </div>
         )}
-      </div>
+      </motion.div>
     </div>
   );
 }

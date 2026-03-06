@@ -35,9 +35,6 @@ class Settings:
     HOST: str = os.getenv("HOST", "0.0.0.0")
     PORT: int = int(os.getenv("PORT", "8000"))
 
-    # SQLite database path
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./guardion.db")
-
     # CORS allowed origins (extension + dashboard)
     CORS_ORIGINS: list[str] = os.getenv(
         "CORS_ORIGINS",
@@ -49,6 +46,18 @@ class Settings:
 
     # OSV API endpoint for vulnerability lookups
     OSV_API_URL: str = "https://api.osv.dev/v1/query"
+
+    # NVD (National Vulnerability Database) API key for CVE enrichment
+    NVD_API_KEY: str = os.getenv("NVD_API_KEY", "")
+
+    # ── MongoDB ──
+    MONGO_URI: str = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+    MONGO_DB_NAME: str = os.getenv("MONGO_DB_NAME", "guardion")
+
+    # ── JWT Authentication ──
+    JWT_SECRET: str = os.getenv("JWT_SECRET", "guardion-super-secret-key-change-in-production")
+    JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
+    JWT_EXPIRE_MINUTES: int = int(os.getenv("JWT_EXPIRE_MINUTES", "1440"))  # 24 hours
 
 
 settings = Settings()

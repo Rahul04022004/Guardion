@@ -5,11 +5,11 @@ Includes ML model + Gemini side-by-side comparison endpoint.
 """
 
 import logging
+from datetime import datetime, timezone
+from typing import Optional
 
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
 
-from app.database import get_db
 from app.config import settings
 from app.models.schemas import (
     PromptAnalysisRequest,
@@ -17,8 +17,9 @@ from app.models.schemas import (
     MLCompareRequest,
     MLCompareResponse,
 )
-from app.models.db_models import PromptLog
 from app.services.prompt_analyzer import analyze_prompt, analyze_prompt_combined
+from app.services.auth_service import get_current_user, get_optional_user
+from app.db.mongodb import prompt_logs_collection
 
 logger = logging.getLogger("guardion.prompt_routes")
 
@@ -51,7 +52,7 @@ async def quota_status():
 @router.post("/analyze_prompt", response_model=PromptAnalysisResponse)
 async def analyze_prompt_endpoint(
     request: PromptAnalysisRequest,
-    db: Session = Depends(get_db),
+    current_user: Optional[dict] = Depends(get_optional_user),
 ):
     """
     Analyze a prompt for sensitive information.
@@ -65,21 +66,28 @@ async def analyze_prompt_endpoint(
     Called by the Chrome extension before a prompt is sent to an AI chat tool.
     """
     # Combined analysis: regex-only by default, Gemini only when requested
-    # This saves API quota — Chrome extension uses regex, dashboard can opt-in
     result = await analyze_prompt_combined(
         request.prompt, sanitize=True, use_gemini=request.use_gemini
     )
 
-    # Log the analysis to the database
-    log = PromptLog(
-        prompt_text=request.prompt[:2000],  # Truncate for storage
-        risk_score=result.risk_score,
-        decision=result.decision,
-        detected_categories=",".join(result.detected_categories),
-        source_site=request.source,
-    )
-    db.add(log)
-    db.commit()
+    # Log to MongoDB
+    try:
+        prompt_logs_collection().insert_one({
+            "user_id": current_user["_id"] if current_user else "anonymous",
+            "prompt_text": request.prompt[:2000],
+            "risk_score": result.risk_score,
+            "decision": result.decision,
+            "detected_categories": result.detected_categories,
+            "source_site": request.source,
+            "ml_prediction": result.ml_prediction,
+            "result": {
+                "is_threat": result.decision in ("block", "warn"),
+                "risk_score": result.risk_score,
+            },
+            "created_at": datetime.now(timezone.utc),
+        })
+    except Exception as e:
+        logger.warning(f"MongoDB log failed: {e}")
 
     return PromptAnalysisResponse(
         risk_score=result.risk_score,

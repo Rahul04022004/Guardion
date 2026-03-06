@@ -146,32 +146,32 @@ hash_val = hashlib.md5(password.encode())
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-            <svg className="w-5 h-5 text-orange-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+            <svg className="w-5 h-5 text-brand-orange" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5" />
             </svg>
             Secure Code Checker
           </h2>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-gray-500 mt-1">
             Scan your code for security vulnerabilities before pushing to GitHub
           </p>
         </div>
         <button
           onClick={loadExample}
-          className="px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-white bg-slate-800/40 hover:bg-slate-700/50 border border-slate-700/40 rounded-md transition-all"
+          className="px-3 py-1.5 text-xs font-medium text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-md transition-all"
         >
           Load Example
         </button>
       </div>
 
       {/* ── Input Mode Toggle ── */}
-      <div className="card-glass rounded-lg p-6 space-y-4">
+      <div className="bg-brand-card border border-white/5 rounded-lg p-6 space-y-4">
         <div className="flex items-center gap-2">
           <button
             onClick={() => setMode("paste")}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
               mode === "paste"
-                ? "bg-slate-700/60 text-white"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-700/20"
+                ? "bg-brand-orange/15 text-brand-orange border border-brand-orange/20"
+                : "text-gray-500 hover:text-gray-300 hover:bg-white/5"
             }`}
           >
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
@@ -183,8 +183,8 @@ hash_val = hashlib.md5(password.encode())
             onClick={() => setMode("upload")}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
               mode === "upload"
-                ? "bg-slate-700/60 text-white"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-700/20"
+                ? "bg-brand-orange/15 text-brand-orange border border-brand-orange/20"
+                : "text-gray-500 hover:text-gray-300 hover:bg-white/5"
             }`}
           >
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
@@ -203,7 +203,7 @@ hash_val = hashlib.md5(password.encode())
                 placeholder="filename.py (optional, for language detection)"
                 value={filename}
                 onChange={(e) => setFilename(e.target.value)}
-                className="flex-1 bg-slate-900/50 border border-slate-700/50 rounded-md px-3 py-1.5 text-xs text-slate-300 placeholder-slate-600 focus:outline-none focus:border-blue-500/50"
+                className="flex-1 bg-brand-dark border border-white/10 rounded-md px-3 py-1.5 text-xs text-gray-300 placeholder-gray-600 focus:outline-none focus:border-brand-cyan/50"
               />
             </div>
             <textarea
@@ -211,7 +211,7 @@ hash_val = hashlib.md5(password.encode())
               placeholder="Paste your source code here..."
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              className="w-full bg-slate-900/50 border border-slate-700/50 rounded-md p-4 text-sm text-slate-200 placeholder-slate-600 font-mono focus:outline-none focus:border-blue-500/50 resize-y"
+              className="w-full bg-brand-dark border border-white/10 rounded-md p-4 text-sm text-gray-200 placeholder-gray-600 font-mono focus:outline-none focus:border-brand-cyan/50 resize-y"
               spellCheck={false}
             />
             <button
@@ -239,14 +239,14 @@ hash_val = hashlib.md5(password.encode())
           <div className="space-y-3">
             <div
               onClick={() => fileRef.current?.click()}
-              className="flex flex-col items-center justify-center gap-3 py-10 border-2 border-dashed border-slate-700/50 rounded-lg cursor-pointer hover:border-orange-500/40 hover:bg-slate-800/20 transition-all"
+              className="flex flex-col items-center justify-center gap-3 py-10 border-2 border-dashed border-white/10 rounded-lg cursor-pointer hover:border-brand-orange/40 hover:bg-white/5 transition-all"
             >
-              <svg className="w-10 h-10 text-slate-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.2} stroke="currentColor">
+              <svg className="w-10 h-10 text-gray-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.2} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m6.75 12-3-3m0 0-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
               </svg>
               <div className="text-center">
-                <span className="text-sm text-slate-400">Click to upload a source code file</span>
-                <p className="text-[11px] text-slate-600 mt-1">.py, .js, .ts, .java, .jsx, .tsx — max 1 MB</p>
+                <span className="text-sm text-gray-400">Click to upload a source code file</span>
+                <p className="text-[11px] text-gray-600 mt-1">.py, .js, .ts, .java, .jsx, .tsx — max 1 MB</p>
               </div>
             </div>
             <input
@@ -257,8 +257,8 @@ hash_val = hashlib.md5(password.encode())
               className="hidden"
             />
             {filename && (
-              <p className="text-xs text-slate-500">
-                Selected: <span className="text-slate-300 font-medium">{filename}</span>
+              <p className="text-xs text-gray-500">
+                Selected: <span className="text-gray-300 font-medium">{filename}</span>
               </p>
             )}
           </div>
@@ -275,12 +275,12 @@ hash_val = hashlib.md5(password.encode())
       {result && (
         <div className="space-y-5">
           {/* Security Score + Summary Bar */}
-          <div className="card-glass rounded-lg p-6">
+          <div className="bg-brand-card border border-white/5 rounded-lg p-6">
             <div className="flex items-center gap-6">
               {/* Circular Score */}
               <div className="relative w-24 h-24 flex-shrink-0">
                 <svg className="w-24 h-24 -rotate-90" viewBox="0 0 100 100">
-                  <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" strokeWidth="6" className="text-slate-800/60" />
+                  <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" strokeWidth="6" className="text-white/5" />
                   <circle
                     cx="50" cy="50" r="42" fill="none" strokeWidth="6" strokeLinecap="round"
                     strokeDasharray={`${(result.security_score / 100) * 264} 264`}
@@ -291,14 +291,14 @@ hash_val = hashlib.md5(password.encode())
                   <span className={`text-2xl font-black ${scoreColor(result.security_score)}`}>
                     {result.security_score}
                   </span>
-                  <span className="text-[10px] text-slate-500 -mt-0.5">/ 100</span>
+                  <span className="text-[10px] text-gray-500 -mt-0.5">/ 100</span>
                 </div>
               </div>
 
               {/* Summary */}
               <div className="flex-1 space-y-2">
                 <h3 className="text-base font-semibold text-white">Security Score</h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-gray-500">
                   {result.total_lines} lines scanned
                   {result.language_hint && result.language_hint !== "unknown"
                     ? ` — ${result.language_hint}`
@@ -315,7 +315,7 @@ hash_val = hashlib.md5(password.encode())
                       <div key={sev} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md ${s.bg} border ${s.border}`}>
                         <div className={`w-1.5 h-1.5 rounded-full ${s.dot}`}></div>
                         <span className={`text-xs font-semibold ${s.text}`}>{count}</span>
-                        <span className="text-[10px] text-slate-500">{sev}</span>
+                        <span className="text-[10px] text-gray-500">{sev}</span>
                       </div>
                     );
                   })}
@@ -326,18 +326,18 @@ hash_val = hashlib.md5(password.encode())
 
           {/* No Issues */}
           {result.vulnerabilities.length === 0 && (
-            <div className="card-glass rounded-lg p-8 text-center">
+            <div className="bg-brand-card border border-white/5 rounded-lg p-8 text-center">
               <svg className="w-12 h-12 text-emerald-400 mx-auto mb-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
               </svg>
               <h3 className="text-sm font-semibold text-emerald-400">No vulnerabilities detected</h3>
-              <p className="text-xs text-slate-500 mt-1">Your code looks clean. Safe to push!</p>
+              <p className="text-xs text-gray-500 mt-1">Your code looks clean. Safe to push!</p>
             </div>
           )}
 
           {/* Vulnerability List */}
           {result.vulnerabilities.length > 0 && (
-            <div className="card-glass rounded-lg p-6 space-y-3">
+            <div className="bg-brand-card border border-white/5 rounded-lg p-6 space-y-3">
               <h3 className="text-sm font-semibold text-white flex items-center gap-2">
                 <svg className="w-4 h-4 text-red-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
@@ -349,7 +349,7 @@ hash_val = hashlib.md5(password.encode())
                 {result.vulnerabilities.map((vuln, i) => {
                   const s = severityStyles[vuln.severity] || severityStyles.MEDIUM;
                   return (
-                    <div key={i} className="bg-slate-800/40 border border-slate-700/30 rounded-lg p-4 space-y-2">
+                    <div key={i} className="bg-brand-dark border border-white/10 rounded-lg p-4 space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <div className={`w-2 h-2 rounded-full ${s.dot}`}></div>
@@ -361,13 +361,13 @@ hash_val = hashlib.md5(password.encode())
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${s.bg} border ${s.border} ${s.text}`}>
                             {vuln.severity}
                           </span>
-                          <span className="text-[11px] text-slate-500">
+                          <span className="text-[11px] text-gray-500">
                             Line {vuln.line}
                           </span>
                         </div>
                       </div>
-                      <p className="text-xs text-slate-400">{vuln.description}</p>
-                      <pre className="bg-slate-900/60 border border-slate-700/30 rounded px-3 py-2 text-xs text-red-300/80 font-mono overflow-x-auto">
+                      <p className="text-xs text-gray-400">{vuln.description}</p>
+                      <pre className="bg-brand-dark border border-white/10 rounded px-3 py-2 text-xs text-red-300/80 font-mono overflow-x-auto">
                         {vuln.code_snippet}
                       </pre>
                     </div>

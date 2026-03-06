@@ -134,11 +134,11 @@ export default function PromptTester({ onAnalyzed }) {
   return (
     <div className="space-y-4">
       {/* Input Section */}
-      <div className="card-glass rounded-lg p-6">
+      <div className="bg-brand-card border border-white/5 rounded-lg p-6">
         <h2 className="text-base font-semibold text-white mb-0.5">
           Prompt Security Tester
         </h2>
-        <p className="text-sm text-slate-500 mb-4">
+        <p className="text-sm text-gray-500 mb-4">
           Test how Guardion detects sensitive information and injection attacks in AI prompts.
         </p>
 
@@ -148,7 +148,7 @@ export default function PromptTester({ onAnalyzed }) {
             <button
               key={ex.label}
               onClick={() => setPrompt(ex.text)}
-              className="px-3 py-1.5 text-xs bg-slate-800/60 hover:bg-slate-700/60 border border-slate-700/40 rounded-md text-slate-400 hover:text-slate-300 transition font-medium"
+              className="px-3 py-1.5 text-xs bg-brand-dark hover:bg-brand-card border border-white/5 rounded-md text-gray-400 hover:text-gray-300 transition font-medium"
             >
               {ex.label}
             </button>
@@ -156,13 +156,13 @@ export default function PromptTester({ onAnalyzed }) {
         </div>
 
         {/* Economy Mode: Gemini Toggle + Quota Status */}
-        <div className="flex items-center justify-between mb-4 p-3 bg-slate-800/40 border border-slate-700/30 rounded-lg">
+        <div className="flex items-center justify-between mb-4 p-3 bg-brand-dark border border-white/5 rounded-lg">
           <div className="flex items-center gap-3">
             {/* Toggle */}
             <button
               onClick={() => setUseGemini(!useGemini)}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                useGemini ? "bg-blue-600" : "bg-slate-600"
+                useGemini ? "bg-brand-orange" : "bg-slate-600"
               }`}
             >
               <span
@@ -172,10 +172,10 @@ export default function PromptTester({ onAnalyzed }) {
               />
             </button>
             <div>
-              <span className="text-sm text-slate-300 font-medium">
+              <span className="text-sm text-gray-300 font-medium">
                 {useGemini ? "Gemini ON" : "Gemini OFF"}
               </span>
-              <p className="text-[11px] text-slate-500">
+              <p className="text-[11px] text-gray-500">
                 {useGemini
                   ? "Uses API quota — cached results are free"
                   : "Economy mode — regex + local ML only (no API cost)"}
@@ -191,11 +191,11 @@ export default function PromptTester({ onAnalyzed }) {
                   Quota Cooldown
                 </span>
               ) : (
-                <span className="px-2 py-1 bg-slate-700/50 border border-slate-600/30 rounded text-slate-400">
+                <span className="px-2 py-1 bg-white/5 border border-white/10 rounded text-gray-400">
                   {quota.rate_limiter?.calls_remaining}/{quota.rate_limiter?.max_calls_per_minute} calls/min
                 </span>
               )}
-              <span className="px-2 py-1 bg-slate-700/50 border border-slate-600/30 rounded text-slate-400">
+              <span className="px-2 py-1 bg-white/5 border border-white/10 rounded text-gray-400">
                 Cache: {quota.cache?.hits || 0} hits ({Math.round((quota.cache?.hit_rate || 0) * 100)}%)
               </span>
             </div>
@@ -207,14 +207,14 @@ export default function PromptTester({ onAnalyzed }) {
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           placeholder="Enter a prompt to analyze for sensitive data..."
-          className="w-full h-32 bg-slate-900/60 border border-slate-700/40 rounded-md p-4 text-slate-200 text-sm placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/40 resize-none"
+          className="w-full h-32 bg-brand-dark border border-white/5 rounded-md p-4 text-slate-200 text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-cyan/30 focus:border-brand-cyan/50 resize-none"
         />
 
         {/* Analyze button */}
         <button
           onClick={handleAnalyze}
           disabled={loading || !prompt.trim()}
-          className="mt-3 px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-md shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="mt-3 px-5 py-2 bg-brand-orange hover:bg-brand-orange-light text-white text-sm font-medium rounded-md shadow-glow-orange-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           {loading ? (
             <span className="flex items-center gap-2">
@@ -238,7 +238,7 @@ export default function PromptTester({ onAnalyzed }) {
 
       {/* ── ML Model vs Gemini Side-by-Side ── */}
       {mlResult && (
-        <div className="card-glass rounded-lg p-6 space-y-4">
+        <div className="bg-brand-card border border-white/5 rounded-lg p-6 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-base font-semibold text-white flex items-center gap-2">
               <svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
@@ -263,21 +263,21 @@ export default function PromptTester({ onAnalyzed }) {
           {/* Side-by-side cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Local ML Model Card */}
-            <div className="bg-slate-800/40 border border-slate-700/40 rounded-lg p-5 space-y-3">
+            <div className="bg-brand-dark border border-white/5 rounded-lg p-5 space-y-3">
               <div className="flex items-center gap-2 mb-1">
                 <div className="w-2 h-2 rounded-full bg-purple-400"></div>
                 <h4 className="text-sm font-semibold text-purple-300 uppercase tracking-wider">
                   Local ML Model
                 </h4>
               </div>
-              <p className="text-[11px] text-slate-500">
+              <p className="text-[11px] text-gray-500">
                 sentence-transformers + logistic regression
               </p>
 
               {/* Prediction */}
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-xs text-slate-400">Prediction</span>
+                  <span className="text-xs text-gray-400">Prediction</span>
                   <span className="px-2.5 py-0.5 bg-purple-500/10 border border-purple-500/25 rounded text-xs text-purple-300 font-bold">
                     {formatCategory(mlResult.local_model?.prediction)}
                   </span>
@@ -286,12 +286,12 @@ export default function PromptTester({ onAnalyzed }) {
                 {/* Confidence bar */}
                 <div>
                   <div className="flex justify-between items-center mb-1">
-                    <span className="text-xs text-slate-400">Confidence</span>
+                    <span className="text-xs text-gray-400">Confidence</span>
                     <span className="text-sm font-bold text-white">
                       {((mlResult.local_model?.confidence || 0) * 100).toFixed(1)}%
                     </span>
                   </div>
-                  <div className="w-full bg-slate-700/50 rounded-full h-2">
+                  <div className="w-full bg-white/5 rounded-full h-2">
                     <div
                       className="bg-purple-500 h-2 rounded-full transition-all duration-500"
                       style={{ width: `${(mlResult.local_model?.confidence || 0) * 100}%` }}
@@ -302,15 +302,15 @@ export default function PromptTester({ onAnalyzed }) {
                 {/* Per-class scores */}
                 {mlResult.local_model?.all_scores && (
                   <div className="pt-2 space-y-1.5">
-                    <span className="text-[11px] text-slate-500 uppercase tracking-wider">Class Probabilities</span>
+                    <span className="text-[11px] text-gray-500 uppercase tracking-wider">Class Probabilities</span>
                     {Object.entries(mlResult.local_model.all_scores)
                       .sort(([, a], [, b]) => b - a)
                       .map(([label, score]) => (
                         <div key={label} className="flex items-center gap-2">
-                          <span className="text-[11px] text-slate-400 w-28 truncate">
+                          <span className="text-[11px] text-gray-400 w-28 truncate">
                             {formatCategory(label)}
                           </span>
-                          <div className="flex-1 bg-slate-700/40 rounded-full h-1.5">
+                          <div className="flex-1 bg-white/5 rounded-full h-1.5">
                             <div
                               className={`h-1.5 rounded-full transition-all duration-500 ${
                                 label === mlResult.local_model.prediction
@@ -320,7 +320,7 @@ export default function PromptTester({ onAnalyzed }) {
                               style={{ width: `${score * 100}%` }}
                             />
                           </div>
-                          <span className="text-[11px] text-slate-500 w-10 text-right">
+                          <span className="text-[11px] text-gray-500 w-10 text-right">
                             {(score * 100).toFixed(1)}%
                           </span>
                         </div>
@@ -332,10 +332,10 @@ export default function PromptTester({ onAnalyzed }) {
 
             {/* Gemini Analysis Card — only shown when Gemini is enabled */}
             {mlResult.gemini_analysis && (
-            <div className="bg-slate-800/40 border border-slate-700/40 rounded-lg p-5 space-y-3">
+            <div className="bg-brand-dark border border-white/5 rounded-lg p-5 space-y-3">
               <div className="flex items-center gap-2 mb-1">
-                <div className="w-2 h-2 rounded-full bg-blue-400"></div>
-                <h4 className="text-sm font-semibold text-blue-300 uppercase tracking-wider">
+                <div className="w-2 h-2 rounded-full bg-brand-cyan"></div>
+                <h4 className="text-sm font-semibold text-brand-cyan uppercase tracking-wider">
                   Gemini API Analysis
                 </h4>
                 {mlResult.gemini_analysis?.from_cache && (
@@ -349,15 +349,15 @@ export default function PromptTester({ onAnalyzed }) {
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-slate-500">
+              <p className="text-[11px] text-gray-500">
                 gemini-2.5-flash calibrated classification
               </p>
 
               {/* Prediction */}
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-xs text-slate-400">Prediction</span>
-                  <span className="px-2.5 py-0.5 bg-blue-500/10 border border-blue-500/25 rounded text-xs text-blue-300 font-bold">
+                  <span className="text-xs text-gray-400">Prediction</span>
+                  <span className="px-2.5 py-0.5 bg-brand-cyan/10 border border-brand-cyan/25 rounded text-xs text-brand-cyan font-bold">
                     {formatCategory(mlResult.gemini_analysis?.prediction)}
                   </span>
                 </div>
@@ -365,14 +365,14 @@ export default function PromptTester({ onAnalyzed }) {
                 {/* Confidence bar */}
                 <div>
                   <div className="flex justify-between items-center mb-1">
-                    <span className="text-xs text-slate-400">Confidence</span>
+                    <span className="text-xs text-gray-400">Confidence</span>
                     <span className="text-sm font-bold text-white">
                       {((mlResult.gemini_analysis?.confidence || 0) * 100).toFixed(1)}%
                     </span>
                   </div>
-                  <div className="w-full bg-slate-700/50 rounded-full h-2">
+                  <div className="w-full bg-white/5 rounded-full h-2">
                     <div
-                      className="bg-blue-500 h-2 rounded-full transition-all duration-500"
+                      className="bg-brand-cyan h-2 rounded-full transition-all duration-500"
                       style={{ width: `${(mlResult.gemini_analysis?.confidence || 0) * 100}%` }}
                     />
                   </div>
@@ -381,25 +381,25 @@ export default function PromptTester({ onAnalyzed }) {
                 {/* Per-class scores (mirrors local model layout) */}
                 {mlResult.gemini_analysis?.all_scores && (
                   <div className="pt-2 space-y-1.5">
-                    <span className="text-[11px] text-slate-500 uppercase tracking-wider">Class Probabilities</span>
+                    <span className="text-[11px] text-gray-500 uppercase tracking-wider">Class Probabilities</span>
                     {Object.entries(mlResult.gemini_analysis.all_scores)
                       .sort(([, a], [, b]) => b - a)
                       .map(([label, score]) => (
                         <div key={label} className="flex items-center gap-2">
-                          <span className="text-[11px] text-slate-400 w-28 truncate">
+                          <span className="text-[11px] text-gray-400 w-28 truncate">
                             {formatCategory(label)}
                           </span>
-                          <div className="flex-1 bg-slate-700/40 rounded-full h-1.5">
+                          <div className="flex-1 bg-white/5 rounded-full h-1.5">
                             <div
                               className={`h-1.5 rounded-full transition-all duration-500 ${
                                 label === mlResult.gemini_analysis.prediction
-                                  ? "bg-blue-400"
+                                  ? "bg-brand-cyan"
                                   : "bg-slate-500/50"
                               }`}
                               style={{ width: `${score * 100}%` }}
                             />
                           </div>
-                          <span className="text-[11px] text-slate-500 w-10 text-right">
+                          <span className="text-[11px] text-gray-500 w-10 text-right">
                             {(score * 100).toFixed(1)}%
                           </span>
                         </div>
@@ -410,8 +410,8 @@ export default function PromptTester({ onAnalyzed }) {
                 {/* Gemini explanation */}
                 {mlResult.gemini_analysis?.explanation && (
                   <div className="pt-2">
-                    <span className="text-[11px] text-slate-500 uppercase tracking-wider">Explanation</span>
-                    <p className="mt-1 text-xs text-slate-300 leading-relaxed bg-slate-900/40 rounded p-2.5 border border-slate-700/30">
+                    <span className="text-[11px] text-gray-500 uppercase tracking-wider">Explanation</span>
+                    <p className="mt-1 text-xs text-gray-300 leading-relaxed bg-brand-dark rounded p-2.5 border border-white/5">
                       {mlResult.gemini_analysis.explanation}
                     </p>
                   </div>
@@ -453,7 +453,7 @@ export default function PromptTester({ onAnalyzed }) {
                     <span className={`text-sm font-bold ${style.text}`}>
                       {mlResult.gemini_analysis ? "COMBINED DECISION" : "ML MODEL DECISION"}: {mlResult.decision}
                     </span>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
+                    <p className="text-[11px] text-gray-500 mt-0.5">
                       {mlResult.gemini_analysis ? "Strictest outcome from both models is applied" : "Based on local ML model only (Gemini OFF)"}
                     </p>
                   </div>
@@ -469,9 +469,9 @@ export default function PromptTester({ onAnalyzed }) {
 
       {/* ── Regex Analysis Results ── */}
       {result && (
-        <div className="card-glass rounded-lg p-6 space-y-4">
+        <div className="bg-brand-card border border-white/5 rounded-lg p-6 space-y-4">
           <h3 className="text-base font-semibold text-white flex items-center gap-2">
-            <svg className="w-5 h-5 text-cyan-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+            <svg className="w-5 h-5 text-brand-cyan" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
             </svg>
             Combined Analysis (Regex + ML{result.reason ? " + Gemini" : ""})
@@ -487,7 +487,7 @@ export default function PromptTester({ onAnalyzed }) {
               <span className="px-2 py-0.5 bg-purple-500/10 border border-purple-500/25 rounded text-xs text-purple-300 font-bold">
                 {formatCategory(result.ml_prediction.prediction)}
               </span>
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-gray-400">
                 {((result.ml_prediction.confidence || 0) * 100).toFixed(1)}% confidence
               </span>
             </div>
@@ -530,7 +530,7 @@ export default function PromptTester({ onAnalyzed }) {
           {/* Detected categories */}
           {result.detected_categories?.length > 0 && (
             <div>
-              <h4 className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">
+              <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
                 Detected Categories
               </h4>
               <div className="flex flex-wrap gap-1.5">
@@ -550,12 +550,12 @@ export default function PromptTester({ onAnalyzed }) {
           {result.sanitized_prompt && (
             <div>
               <div className="flex items-center justify-between mb-2">
-                <h4 className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Sanitized Output
                 </h4>
                 <button
                   onClick={() => copyToClipboard(result.sanitized_prompt)}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all duration-200 bg-slate-700/50 hover:bg-slate-600/60 border border-slate-600/40 hover:border-slate-500/50 text-slate-300 hover:text-white"
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all duration-200 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/15 text-gray-300 hover:text-white"
                 >
                   {copied ? (
                     <>
@@ -574,7 +574,7 @@ export default function PromptTester({ onAnalyzed }) {
                   )}
                 </button>
               </div>
-              <pre className="bg-slate-900/60 border border-slate-700/40 rounded-md p-4 text-sm text-emerald-300/90 whitespace-pre-wrap overflow-auto max-h-48 font-mono select-all">
+              <pre className="bg-brand-dark border border-white/5 rounded-md p-4 text-sm text-emerald-300/90 whitespace-pre-wrap overflow-auto max-h-48 font-mono select-all">
                 {result.sanitized_prompt}
               </pre>
             </div>

@@ -16,6 +16,8 @@ from pathlib import Path
 import httpx
 
 from app.config import settings
+from app.services.nvd_service import enrich_vulnerabilities
+from app.services.owasp_service import tag_vulnerabilities_owasp
 
 logger = logging.getLogger("guardion.scanner")
 
@@ -341,6 +343,9 @@ async def scan_repository(repo_url: str) -> dict:
                         })
 
         logger.info(f"Found {len(all_vulns)} vulnerabilities across {len(deps)} deps")
+
+        # Step 3b: Enrich with NVD data (CVSS scores, attack vectors, descriptions)
+        all_vulns = await enrich_vulnerabilities(all_vulns)
 
         # Step 4: Calculate security score
         score, counts = calculate_security_score(all_vulns)

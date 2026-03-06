@@ -5,11 +5,15 @@ Supports both JSON (paste code) and multipart file upload.
 """
 
 import logging
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
-from pydantic import BaseModel
+from datetime import datetime, timezone
 from typing import Optional
 
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
+from pydantic import BaseModel
+
 from app.services.code_scanner import scan_code
+from app.services.auth_service import get_optional_user
+from app.db.mongodb import code_scans_collection
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +48,10 @@ class CodeScanResponse(BaseModel):
 # ──────────────────── Endpoints ────────────────────
 
 @router.post("/scan_code", response_model=CodeScanResponse)
-async def scan_code_text(request: CodeScanRequest):
+async def scan_code_text(
+    request: CodeScanRequest,
+    current_user: Optional[dict] = Depends(get_optional_user),
+):
     """
     Scan pasted source code for security vulnerabilities.
 
@@ -56,6 +63,21 @@ async def scan_code_text(request: CodeScanRequest):
 
     logger.info(f"Code scan requested — {len(request.code)} chars, filename='{request.filename}'")
     result = scan_code(request.code, filename=request.filename)
+
+    # Log to MongoDB
+    try:
+        code_scans_collection().insert_one({
+            "user_id": current_user["_id"] if current_user else "anonymous",
+            "filename": request.filename,
+            "code_length": len(request.code),
+            "security_score": result.security_score,
+            "total_vulnerabilities": len(result.vulnerabilities),
+            "language_hint": result.language_hint,
+            "summary": result.summary,
+            "created_at": datetime.now(timezone.utc),
+        })
+    except Exception as e:
+        logger.warning(f"MongoDB code scan log failed: {e}")
 
     return CodeScanResponse(
         vulnerabilities=[
@@ -76,7 +98,10 @@ async def scan_code_text(request: CodeScanRequest):
 
 
 @router.post("/scan_code_file", response_model=CodeScanResponse)
-async def scan_code_file(file: UploadFile = File(...)):
+async def scan_code_file(
+    file: UploadFile = File(...),
+    current_user: Optional[dict] = Depends(get_optional_user),
+):
     """
     Scan an uploaded source code file for security vulnerabilities.
 
@@ -101,6 +126,21 @@ async def scan_code_file(file: UploadFile = File(...)):
     filename = file.filename or ""
     logger.info(f"Code file scan — {len(code_text)} chars, file='{filename}'")
     result = scan_code(code_text, filename=filename)
+
+    # Log to MongoDB
+    try:
+        code_scans_collection().insert_one({
+            "user_id": current_user["_id"] if current_user else "anonymous",
+            "filename": filename,
+            "code_length": len(code_text),
+            "security_score": result.security_score,
+            "total_vulnerabilities": len(result.vulnerabilities),
+            "language_hint": result.language_hint,
+            "summary": result.summary,
+            "created_at": datetime.now(timezone.utc),
+        })
+    except Exception as e:
+        logger.warning(f"MongoDB code file scan log failed: {e}")
 
     return CodeScanResponse(
         vulnerabilities=[

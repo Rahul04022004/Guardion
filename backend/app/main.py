@@ -7,11 +7,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.database import init_db
+from app.db.mongodb import init_mongodb
 from app.api.prompt_routes import router as prompt_router
 from app.api.repo_routes import router as repo_router
 from app.api.dashboard_routes import router as dashboard_router
 from app.api.code_scan_routes import router as code_scan_router
+from app.api.auth_routes import router as auth_router
+from app.api.admin_routes import router as admin_router
 
 # ──────────────────── App Initialization ────────────────────
 
@@ -36,6 +38,8 @@ app.add_middleware(
 
 # ──────────────────── Register Routers ────────────────────
 
+app.include_router(auth_router)
+app.include_router(admin_router)
 app.include_router(prompt_router)
 app.include_router(repo_router)
 app.include_router(dashboard_router)
@@ -46,9 +50,9 @@ app.include_router(code_scan_router)
 
 @app.on_event("startup")
 async def startup():
-    """Initialize database tables on server start."""
-    init_db()
-    print("✅ Guardion backend started — database initialized")
+    """Initialize MongoDB on server start."""
+    init_mongodb()
+    print("Guardion backend started — MongoDB initialized")
 
 
 # ──────────────────── Health Check ────────────────────
@@ -60,12 +64,15 @@ async def root():
     return {
         "service": "Guardion",
         "status": "operational",
-        "version": "1.0.0",
+        "version": "2.0.0",
         "endpoints": {
+            "signup": "POST /auth/signup",
+            "login": "POST /auth/login",
             "analyze_prompt": "POST /api/analyze_prompt",
             "scan_repo": "POST /api/scan_repo",
-            "remediate": "POST /api/remediate",
+            "scan_code": "POST /api/scan_code",
             "dashboard": "GET /api/dashboard",
+            "admin": "GET /admin/stats",
             "docs": "GET /docs",
         },
     }

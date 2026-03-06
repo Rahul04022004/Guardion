@@ -1,13 +1,13 @@
 /**
  * Guardion — Background Service Worker (Manifest V3)
  * Handles communication between content script and the Guardion backend API.
+ * Includes JWT auth header forwarding and threat category tracking.
  */
 
 const API_BASE = "http://localhost:8000/api";
 
 /**
  * Listen for messages from the content script.
- * Expected message format: { action: "analyzePrompt", prompt: "...", source: "..." }
  */
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "analyzePrompt") {
@@ -22,8 +22,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           message: err.message,
         })
       );
-
-    // Return true to indicate async response
     return true;
   }
 
@@ -36,13 +34,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 /**
+ * Get auth headers if user is logged in.
+ */
+async function getAuthHeaders() {
+  const data = await chrome.storage.local.get("guardion_token");
+  const headers = { "Content-Type": "application/json" };
+  if (data.guardion_token) {
+    headers["Authorization"] = `Bearer ${data.guardion_token}`;
+  }
+  return headers;
+}
+
+/**
  * Send prompt to Guardion backend for analysis.
  */
 async function analyzePrompt(prompt, source) {
   try {
+    const headers = await getAuthHeaders();
     const response = await fetch(`${API_BASE}/analyze_prompt`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({ prompt, source }),
     });
 
@@ -51,14 +62,10 @@ async function analyzePrompt(prompt, source) {
     }
 
     const data = await response.json();
-
-    // Update local stats
-    await updateLocalStats(data.decision);
-
+    await updateLocalStats(data.decision, data.detected_categories || []);
     return data;
   } catch (error) {
     console.error("[Guardion] API call failed:", error);
-    // Fail-open: allow the prompt if the backend is unreachable
     return {
       risk_score: 0,
       decision: "allow",
@@ -70,15 +77,16 @@ async function analyzePrompt(prompt, source) {
 }
 
 /**
- * Update local extension stats stored in chrome.storage.
+ * Update local extension stats with category tracking.
  */
-async function updateLocalStats(decision) {
+async function updateLocalStats(decision, categories) {
   const data = await chrome.storage.local.get("guardion_stats");
   const stats = data.guardion_stats || {
     total: 0,
     allowed: 0,
     warned: 0,
     blocked: 0,
+    recentCategories: [],
   };
 
   stats.total++;
@@ -86,12 +94,29 @@ async function updateLocalStats(decision) {
   else if (decision === "warn") stats.warned++;
   else if (decision === "block") stats.blocked++;
 
+  // Track recent threat categories (keep last 20 unique)
+  if (categories && categories.length > 0) {
+    const existing = new Set(stats.recentCategories || []);
+    categories.forEach((c) => existing.add(c));
+    stats.recentCategories = Array.from(existing).slice(-20);
+  }
+
   await chrome.storage.local.set({ guardion_stats: stats });
 }
 
 /**
  * Get local stats for the popup.
  */
+async function getStats() {
+  const data = await chrome.storage.local.get("guardion_stats");
+  return data.guardion_stats || {
+    total: 0,
+    allowed: 0,
+    warned: 0,
+    blocked: 0,
+    recentCategories: [],
+  };
+}
 async function getStats() {
   const data = await chrome.storage.local.get("guardion_stats");
   return data.guardion_stats || { total: 0, allowed: 0, warned: 0, blocked: 0 };

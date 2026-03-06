@@ -1,42 +1,50 @@
 """
 Dashboard API Routes
 Provides aggregated metrics and recent activity for the React dashboard.
+Supports both user-scoped (client) and global (admin) views.
 """
 
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
-from sqlalchemy import func
 
-from app.database import get_db
 from app.models.schemas import DashboardResponse, PromptMetrics, RepoMetrics
-from app.models.db_models import PromptLog, RepoScan
+from app.services.auth_service import get_current_user, get_optional_user
+from app.db.mongodb import prompt_logs_collection, repo_scans_collection, code_scans_collection
+
+from typing import Optional
 
 router = APIRouter(prefix="/api", tags=["Dashboard"])
 
 
 @router.get("/dashboard", response_model=DashboardResponse)
-async def get_dashboard(db: Session = Depends(get_db)):
+async def get_dashboard(
+    current_user: Optional[dict] = Depends(get_optional_user),
+):
     """
-    Return aggregated security metrics for the admin dashboard.
-    Combines prompt analysis stats and repository scan stats.
+    Return aggregated security metrics for the dashboard.
+    If authenticated, returns user-scoped data from MongoDB.
+    Otherwise returns global data from MongoDB.
     """
+    user_id = current_user["_id"] if current_user else None
+    return _dashboard_from_mongo(user_id)
 
-    # ── Prompt Metrics ──
-    total_prompts = db.query(func.count(PromptLog.id)).scalar() or 0
-    blocked = db.query(func.count(PromptLog.id)).filter(PromptLog.decision == "block").scalar() or 0
-    warnings = db.query(func.count(PromptLog.id)).filter(PromptLog.decision == "warn").scalar() or 0
-    allowed = db.query(func.count(PromptLog.id)).filter(PromptLog.decision == "allow").scalar() or 0
 
-    # Count prompts with credential-related detections
-    credential_leaks = db.query(func.count(PromptLog.id)).filter(
-        PromptLog.detected_categories.like("%api_key%")
-        | PromptLog.detected_categories.like("%password%")
-        | PromptLog.detected_categories.like("%auth_token%")
-        | PromptLog.detected_categories.like("%private_key%")
-        | PromptLog.detected_categories.like("%aws_key%")
-        | PromptLog.detected_categories.like("%github_token%")
-        | PromptLog.detected_categories.like("%generic_secret%")
-    ).scalar() or 0
+def _dashboard_from_mongo(user_id: Optional[str] = None) -> DashboardResponse:
+    """Build dashboard response from MongoDB for a specific user."""
+    pl = prompt_logs_collection()
+    rs = repo_scans_collection()
+
+    # Prompt metrics
+    query_filter = {"user_id": user_id} if user_id else {}
+    total_prompts = pl.count_documents(query_filter)
+    blocked = pl.count_documents({**query_filter, "decision": "block"})
+    warnings = pl.count_documents({**query_filter, "decision": "warn"})
+    allowed = pl.count_documents({**query_filter, "decision": "allow"})
+
+    credential_cats = ["api_key", "password", "auth_token", "private_key", "aws_key", "github_token", "generic_secret"]
+    credential_leaks = pl.count_documents({
+        **query_filter,
+        "detected_categories": {"$in": credential_cats},
+    })
 
     prompt_metrics = PromptMetrics(
         total_prompts=total_prompts,
@@ -46,63 +54,66 @@ async def get_dashboard(db: Session = Depends(get_db)):
         credential_leaks=credential_leaks,
     )
 
-    # ── Repo Metrics ──
-    total_scans = db.query(func.count(RepoScan.id)).scalar() or 0
-    total_vulns = db.query(func.sum(RepoScan.total_vulnerabilities)).scalar() or 0
-    critical = db.query(func.sum(RepoScan.critical_count)).scalar() or 0
-    high = db.query(func.sum(RepoScan.high_count)).scalar() or 0
-    medium = db.query(func.sum(RepoScan.medium_count)).scalar() or 0
-    low = db.query(func.sum(RepoScan.low_count)).scalar() or 0
+    # Repo metrics
+    total_scans = rs.count_documents(query_filter)
+    pipeline = [
+        {"$match": query_filter},
+        {"$group": {
+            "_id": None,
+            "total_vulns": {"$sum": "$total_vulnerabilities"},
+            "critical": {"$sum": "$critical_count"},
+            "high": {"$sum": "$high_count"},
+            "medium": {"$sum": "$medium_count"},
+            "low": {"$sum": "$low_count"},
+        }},
+    ]
+    agg = list(rs.aggregate(pipeline))
+    repo_agg = agg[0] if agg else {}
 
     repo_metrics = RepoMetrics(
         total_scans=total_scans,
-        total_vulnerabilities=total_vulns,
-        critical=critical,
-        high=high,
-        medium=medium,
-        low=low,
+        total_vulnerabilities=repo_agg.get("total_vulns", 0),
+        critical=repo_agg.get("critical", 0),
+        high=repo_agg.get("high", 0),
+        medium=repo_agg.get("medium", 0),
+        low=repo_agg.get("low", 0),
     )
 
-    # ── Recent Activity ──
-    recent_prompts_db = (
-        db.query(PromptLog)
-        .order_by(PromptLog.created_at.desc())
-        .limit(10)
-        .all()
+    # Recent prompts
+    recent_prompts_docs = list(
+        pl.find(query_filter).sort("created_at", -1).limit(10)
     )
     recent_prompts = [
         {
-            "id": p.id,
-            "prompt_preview": p.prompt_text[:100] + "..." if len(p.prompt_text) > 100 else p.prompt_text,
-            "risk_score": p.risk_score,
-            "decision": p.decision,
-            "categories": p.detected_categories,
-            "source": p.source_site,
-            "created_at": p.created_at.isoformat() if p.created_at else "",
+            "id": str(p["_id"]),
+            "prompt_preview": (p.get("prompt_text", "")[:100] + "...") if len(p.get("prompt_text", "")) > 100 else p.get("prompt_text", ""),
+            "risk_score": p.get("risk_score", 0),
+            "decision": p.get("decision", ""),
+            "categories": ",".join(p.get("detected_categories", [])) if isinstance(p.get("detected_categories"), list) else p.get("detected_categories", ""),
+            "source": p.get("source_site", ""),
+            "created_at": p["created_at"].isoformat() if p.get("created_at") else "",
         }
-        for p in recent_prompts_db
+        for p in recent_prompts_docs
     ]
 
-    recent_scans_db = (
-        db.query(RepoScan)
-        .order_by(RepoScan.created_at.desc())
-        .limit(10)
-        .all()
+    # Recent repo scans
+    recent_scans_docs = list(
+        rs.find(query_filter).sort("created_at", -1).limit(10)
     )
     recent_scans = [
         {
-            "id": s.id,
-            "repo_url": s.repo_url,
-            "dependencies_scanned": s.dependencies_scanned,
-            "total_vulnerabilities": s.total_vulnerabilities,
-            "security_score": s.security_score,
-            "critical": s.critical_count,
-            "high": s.high_count,
-            "medium": s.medium_count,
-            "low": s.low_count,
-            "created_at": s.created_at.isoformat() if s.created_at else "",
+            "id": str(s["_id"]),
+            "repo_url": s.get("repo_url", ""),
+            "dependencies_scanned": s.get("dependencies_scanned", 0),
+            "total_vulnerabilities": s.get("total_vulnerabilities", 0),
+            "security_score": s.get("security_score", 0),
+            "critical": s.get("critical_count", 0),
+            "high": s.get("high_count", 0),
+            "medium": s.get("medium_count", 0),
+            "low": s.get("low_count", 0),
+            "created_at": s["created_at"].isoformat() if s.get("created_at") else "",
         }
-        for s in recent_scans_db
+        for s in recent_scans_docs
     ]
 
     return DashboardResponse(

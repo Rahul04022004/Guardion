@@ -43,6 +43,12 @@ class VulnerabilityItem(BaseModel):
     severity: str = "UNKNOWN"
     description: str = ""
     fix_suggestion: str = ""
+    attack_vector: str = ""
+    attack_complexity: str = ""
+    nvd_description: str = ""
+    references: list[str] = []
+    owasp_id: str = ""
+    owasp_category: str = ""
 
 
 class RepoScanResponse(BaseModel):

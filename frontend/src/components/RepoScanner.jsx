@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { scanRepo, getRemediation } from "../api";
+import { useState, useEffect } from "react";
+import { scanRepo, getRemediation, getOwaspTrending } from "../api";
 
 /**
  * RepoScanner Component
@@ -13,6 +13,14 @@ export default function RepoScanner({ onScanned }) {
   const [error, setError] = useState(null);
   const [remediations, setRemediations] = useState({});
   const [loadingRemediation, setLoadingRemediation] = useState({});
+  const [owaspTrending, setOwaspTrending] = useState([]);
+  const [showTrending, setShowTrending] = useState(true);
+
+  useEffect(() => {
+    getOwaspTrending()
+      .then(setOwaspTrending)
+      .catch(() => {});
+  }, []);
 
   const handleScan = async () => {
     if (!repoUrl.trim()) return;
@@ -26,6 +34,8 @@ export default function RepoScanner({ onScanned }) {
       const data = await scanRepo(repoUrl);
       setScanResult(data);
       onScanned?.();
+      // Refresh trending data after new scan
+      getOwaspTrending().then(setOwaspTrending).catch(() => {});
     } catch (err) {
       setError(err.message);
     } finally {
@@ -70,13 +80,13 @@ export default function RepoScanner({ onScanned }) {
   return (
     <div className="space-y-4">
       {/* Input Section */}
-      <div className="card-glass rounded-lg p-6">
+      <div className="bg-brand-card border border-white/5 rounded-lg p-6">
         <h2 className="text-base font-semibold text-white mb-0.5">
           Repository Vulnerability Scanner
         </h2>
-        <p className="text-sm text-slate-500 mb-4">
+        <p className="text-sm text-gray-500 mb-4">
           Enter a GitHub repository URL to scan for dependency vulnerabilities
-          using OSV intelligence.
+          using OSV + NVD intelligence.
         </p>
 
         <div className="flex gap-3">
@@ -85,13 +95,13 @@ export default function RepoScanner({ onScanned }) {
             value={repoUrl}
             onChange={(e) => setRepoUrl(e.target.value)}
             placeholder="https://github.com/username/repository"
-            className="flex-1 bg-slate-900/60 border border-slate-700/40 rounded-md px-4 py-2.5 text-slate-200 text-sm placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/40"
+            className="flex-1 bg-brand-dark border border-white/5 rounded-md px-4 py-2.5 text-gray-200 text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-cyan/30 focus:border-brand-cyan/50"
             onKeyDown={(e) => e.key === "Enter" && handleScan()}
           />
           <button
             onClick={handleScan}
             disabled={loading || !repoUrl.trim()}
-            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-md shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+            className="px-5 py-2.5 bg-brand-orange hover:bg-brand-orange-light text-white text-sm font-medium rounded-md shadow-glow-orange-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
           >
             {loading ? (
               <span className="flex items-center gap-2">
@@ -108,7 +118,7 @@ export default function RepoScanner({ onScanned }) {
         </div>
 
         {loading && (
-          <div className="mt-4 p-3 bg-blue-500/8 border border-blue-500/15 rounded-md text-blue-300 text-sm flex items-center gap-2">
+          <div className="mt-4 p-3 bg-brand-cyan/8 border border-brand-cyan/15 rounded-md text-brand-cyan text-sm flex items-center gap-2">
             <svg className="w-4 h-4 animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
@@ -128,7 +138,7 @@ export default function RepoScanner({ onScanned }) {
       {scanResult && (
         <div className="space-y-4">
           {/* Summary Card */}
-          <div className="card-glass rounded-lg p-6">
+          <div className="bg-brand-card border border-white/5 rounded-lg p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-semibold text-white">
                 Scan Results
@@ -143,43 +153,43 @@ export default function RepoScanner({ onScanned }) {
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-              <div className="bg-slate-900/40 border border-slate-700/30 rounded-md p-3 text-center">
-                <div className="text-lg font-semibold text-blue-400">
+              <div className="bg-brand-dark border border-white/5 rounded-md p-3 text-center">
+                <div className="text-lg font-semibold text-brand-cyan">
                   {scanResult.dependencies_scanned}
                 </div>
-                <div className="text-[11px] text-slate-500 font-medium">Dependencies</div>
+                <div className="text-[11px] text-gray-500 font-medium">Dependencies</div>
               </div>
-              <div className="bg-slate-900/40 border border-slate-700/30 rounded-md p-3 text-center">
+              <div className="bg-brand-dark border border-white/5 rounded-md p-3 text-center">
                 <div className="text-lg font-semibold text-red-400">
                   {scanResult.critical_count}
                 </div>
-                <div className="text-[11px] text-slate-500 font-medium">Critical</div>
+                <div className="text-[11px] text-gray-500 font-medium">Critical</div>
               </div>
-              <div className="bg-slate-900/40 border border-slate-700/30 rounded-md p-3 text-center">
+              <div className="bg-brand-dark border border-white/5 rounded-md p-3 text-center">
                 <div className="text-lg font-semibold text-orange-400">
                   {scanResult.high_count}
                 </div>
-                <div className="text-[11px] text-slate-500 font-medium">High</div>
+                <div className="text-[11px] text-gray-500 font-medium">High</div>
               </div>
-              <div className="bg-slate-900/40 border border-slate-700/30 rounded-md p-3 text-center">
+              <div className="bg-brand-dark border border-white/5 rounded-md p-3 text-center">
                 <div className="text-lg font-semibold text-yellow-400">
                   {scanResult.medium_count}
                 </div>
-                <div className="text-[11px] text-slate-500 font-medium">Medium</div>
+                <div className="text-[11px] text-gray-500 font-medium">Medium</div>
               </div>
-              <div className="bg-slate-900/40 border border-slate-700/30 rounded-md p-3 text-center">
+              <div className="bg-brand-dark border border-white/5 rounded-md p-3 text-center">
                 <div className="text-lg font-semibold text-green-400">
                   {scanResult.low_count}
                 </div>
-                <div className="text-[11px] text-slate-500 font-medium">Low</div>
+                <div className="text-[11px] text-gray-500 font-medium">Low</div>
               </div>
             </div>
           </div>
 
           {/* Vulnerability List */}
           {scanResult.vulnerabilities?.length > 0 ? (
-            <div className="card-glass rounded-lg p-6">
-              <h3 className="text-sm font-medium text-slate-400 mb-4">
+            <div className="bg-brand-card border border-white/5 rounded-lg p-6">
+              <h3 className="text-sm font-medium text-gray-400 mb-4">
                 Vulnerabilities ({scanResult.vulnerabilities.length})
               </h3>
 
@@ -187,7 +197,7 @@ export default function RepoScanner({ onScanned }) {
                 {scanResult.vulnerabilities.map((vuln, idx) => (
                   <div
                     key={idx}
-                    className="bg-slate-900/40 border border-slate-700/30 rounded-md p-4"
+                    className="bg-brand-dark border border-white/5 rounded-md p-4"
                   >
                     <div className="flex items-start justify-between mb-2">
                       <div>
@@ -195,7 +205,7 @@ export default function RepoScanner({ onScanned }) {
                           {vuln.package}
                         </span>
                         {vuln.version && vuln.version !== "unknown" && (
-                          <span className="ml-2 text-xs text-slate-500">
+                          <span className="ml-2 text-xs text-gray-500">
                             v{vuln.version}
                           </span>
                         )}
@@ -210,15 +220,57 @@ export default function RepoScanner({ onScanned }) {
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-4 text-xs text-slate-500 mb-2">
+                    <div className="flex items-center gap-4 text-xs text-gray-500 mb-2">
                       <span>CVE: {vuln.cve}</span>
                       {vuln.cvss > 0 && <span>CVSS: {vuln.cvss}</span>}
+                      {vuln.attack_vector && (
+                        <span className="text-brand-cyan">
+                          Vector: {vuln.attack_vector}
+                        </span>
+                      )}
+                      {vuln.attack_complexity && (
+                        <span className="text-brand-orange">
+                          Complexity: {vuln.attack_complexity}
+                        </span>
+                      )}
                     </div>
 
-                    {vuln.description && (
-                      <p className="text-xs text-slate-500 line-clamp-2 mb-3">
+                    {vuln.owasp_category && (
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border bg-purple-500/10 border-purple-500/25 text-purple-400">
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m0-10.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.75c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751A11.959 11.959 0 0 0 12 3.714Z" />
+                          </svg>
+                          OWASP {vuln.owasp_id}
+                        </span>
+                        <span className="text-[10px] text-gray-500">{vuln.owasp_category}</span>
+                      </div>
+                    )}
+
+                    {vuln.nvd_description ? (
+                      <p className="text-xs text-gray-400 line-clamp-3 mb-2">
+                        {vuln.nvd_description}
+                      </p>
+                    ) : vuln.description ? (
+                      <p className="text-xs text-gray-500 line-clamp-2 mb-2">
                         {vuln.description}
                       </p>
+                    ) : null}
+
+                    {vuln.references?.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {vuln.references.slice(0, 3).map((ref, ri) => (
+                          <a
+                            key={ri}
+                            href={ref}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[10px] text-brand-cyan/70 hover:text-brand-cyan underline underline-offset-2 truncate max-w-[200px]"
+                          >
+                            {new URL(ref).hostname}
+                          </a>
+                        ))}
+                      </div>
                     )}
 
                     {/* Remediation */}
@@ -226,7 +278,7 @@ export default function RepoScanner({ onScanned }) {
                       <button
                         onClick={() => handleRemediate(vuln, idx)}
                         disabled={loadingRemediation[idx]}
-                        className="text-xs px-3 py-1.5 bg-indigo-500/8 border border-indigo-500/20 rounded-md text-indigo-300 hover:bg-indigo-500/15 transition disabled:opacity-50 font-medium"
+                        className="text-xs px-3 py-1.5 bg-brand-cyan/8 border border-brand-cyan/20 rounded-md text-brand-cyan hover:bg-brand-cyan/15 transition disabled:opacity-50 font-medium"
                       >
                         {loadingRemediation[idx]
                           ? "Getting AI fix..."
@@ -237,26 +289,26 @@ export default function RepoScanner({ onScanned }) {
                         Failed to get remediation: {remediations[idx].error}
                       </div>
                     ) : (
-                      <div className="mt-2 p-3 bg-indigo-500/5 border border-indigo-500/10 rounded-md space-y-2">
+                      <div className="mt-2 p-3 bg-brand-cyan/5 border border-brand-cyan/10 rounded-md space-y-2">
                         <div className="text-xs">
-                          <span className="text-indigo-300 font-semibold">
+                          <span className="text-brand-cyan font-semibold">
                             Explanation:{" "}
                           </span>
-                          <span className="text-slate-300">
+                          <span className="text-gray-300">
                             {remediations[idx].explanation}
                           </span>
                         </div>
                         <div className="text-xs">
-                          <span className="text-indigo-300 font-semibold">
+                          <span className="text-brand-cyan font-semibold">
                             Fix:{" "}
                           </span>
-                          <span className="text-slate-300">
+                          <span className="text-gray-300">
                             {remediations[idx].suggested_fix}
                           </span>
                         </div>
                         {remediations[idx].recommended_version && (
                           <div className="text-xs">
-                            <span className="text-indigo-300 font-semibold">
+                            <span className="text-brand-cyan font-semibold">
                               Upgrade to:{" "}
                             </span>
                             <span className="text-emerald-300 font-mono">
@@ -278,10 +330,105 @@ export default function RepoScanner({ onScanned }) {
               <h3 className="text-base font-semibold text-emerald-400">
                 No Vulnerabilities Found
               </h3>
-              <p className="text-sm text-slate-500 mt-1">
+              <p className="text-sm text-gray-500 mt-1">
                 All {scanResult.dependencies_scanned} dependencies passed the
                 security check.
               </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* OWASP Top 10 Trending Section */}
+      {owaspTrending.length > 0 && (
+        <div className="bg-brand-card border border-white/5 rounded-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m0-10.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.75c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751A11.959 11.959 0 0 0 12 3.714Z" />
+              </svg>
+              <h3 className="text-base font-semibold text-white">
+                OWASP Top 10 — Trending Vulnerabilities
+              </h3>
+            </div>
+            <button
+              onClick={() => setShowTrending(!showTrending)}
+              className="text-xs text-gray-500 hover:text-gray-300 transition"
+            >
+              {showTrending ? "Hide" : "Show"}
+            </button>
+          </div>
+
+          {showTrending && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {owaspTrending.map((item) => (
+                <div
+                  key={item.owasp_id}
+                  className="bg-brand-dark border border-white/5 rounded-md p-4 relative overflow-hidden"
+                >
+                  {/* Color accent bar */}
+                  <div
+                    className="absolute top-0 left-0 w-1 h-full rounded-l"
+                    style={{ backgroundColor: item.color }}
+                  />
+
+                  <div className="flex items-start justify-between mb-2 pl-2">
+                    <div>
+                      <span
+                        className="text-[11px] font-bold px-1.5 py-0.5 rounded"
+                        style={{
+                          color: item.color,
+                          backgroundColor: `${item.color}15`,
+                          border: `1px solid ${item.color}30`,
+                        }}
+                      >
+                        {item.owasp_id}
+                      </span>
+                      <h4 className="text-sm font-medium text-white mt-1.5">
+                        {item.owasp_category}
+                      </h4>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-lg font-bold text-white">
+                        {item.vuln_count}
+                      </div>
+                      <div className="text-[10px] text-gray-500">found</div>
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-gray-500 line-clamp-2 mb-3 pl-2">
+                    {item.description}
+                  </p>
+
+                  <div className="flex items-center gap-3 pl-2">
+                    {item.avg_cvss > 0 && (
+                      <span className="text-[10px] text-gray-400">
+                        Avg CVSS: <span className="text-brand-orange font-semibold">{item.avg_cvss}</span>
+                      </span>
+                    )}
+                    {item.max_cvss > 0 && (
+                      <span className="text-[10px] text-gray-400">
+                        Max: <span className="text-red-400 font-semibold">{item.max_cvss}</span>
+                      </span>
+                    )}
+                    {item.affected_packages?.length > 0 && (
+                      <span className="text-[10px] text-gray-500">
+                        {item.affected_packages.length} pkg{item.affected_packages.length > 1 ? "s" : ""}
+                      </span>
+                    )}
+                  </div>
+
+                  {item.sample_cves?.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2 pl-2">
+                      {item.sample_cves.filter(c => c !== "N/A").slice(0, 3).map((cve, i) => (
+                        <span key={i} className="text-[9px] font-mono bg-white/5 text-gray-500 px-1.5 py-0.5 rounded">
+                          {cve}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           )}
         </div>
