@@ -8,7 +8,11 @@ build/
 *.sqlite3
 .env
 tmp_repos/
+
+# Ignore guardion cache/temp dirs but allow guardion_ai_model
 guardion_*/
+!guardion_ai_model/
+guardion_ai_model/data/training_data.csv
 
 # Node
 node_modules/
