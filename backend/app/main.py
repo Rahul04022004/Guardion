@@ -11,6 +11,7 @@ from app.database import init_db
 from app.api.prompt_routes import router as prompt_router
 from app.api.repo_routes import router as repo_router
 from app.api.dashboard_routes import router as dashboard_router
+from app.api.code_scan_routes import router as code_scan_router
 
 # ──────────────────── App Initialization ────────────────────
 
@@ -38,6 +39,7 @@ app.add_middleware(
 app.include_router(prompt_router)
 app.include_router(repo_router)
 app.include_router(dashboard_router)
+app.include_router(code_scan_router)
 
 # ──────────────────── Startup Events ────────────────────
 

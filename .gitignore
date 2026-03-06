@@ -13,6 +13,8 @@ tmp_repos/
 guardion_*/
 !guardion_ai_model/
 guardion_ai_model/data/training_data.csv
+guardion_ai_model/model/training_data.csv
+*.csv
 
 # Node
 node_modules/

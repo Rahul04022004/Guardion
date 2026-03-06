@@ -1,11 +1,15 @@
 """
 Prompt Security Analysis Service
-Detects sensitive information in AI prompts using regex pattern matching.
+Detects sensitive information in AI prompts using regex pattern matching
+and a local ML classifier (sentence-transformers + logistic regression).
 Returns risk score, decision, and optionally sanitizes the prompt.
 """
 
 import re
-from dataclasses import dataclass
+import logging
+from dataclasses import dataclass, field
+
+logger = logging.getLogger(__name__)
 
 # ──────────────────── Pattern Definitions ────────────────────
 # Each pattern maps a category name to a compiled regex.
@@ -148,6 +152,25 @@ class AnalysisResult:
     detected_categories: list[str]
     sanitized_prompt: str | None
     gemini_reason: str = ""  # Contextual explanation from Gemini (empty if regex-only)
+    ml_prediction: dict = field(default_factory=dict)  # ML model output: {prediction, confidence, all_scores}
+
+
+# ── ML prediction → risk score mapping ──
+ML_RISK_MAP: dict[str, float] = {
+    "credential_leak": 0.9,
+    "secret_code": 0.9,
+    "financial_data": 0.95,
+    "pii_leak": 0.6,
+    "safe": 0.0,
+}
+
+# ML prediction → regex-style category mapping
+ML_CATEGORY_MAP: dict[str, str] = {
+    "credential_leak": "ml_credential_leak",
+    "secret_code": "ml_secret_code",
+    "financial_data": "ml_financial_data",
+    "pii_leak": "ml_pii_leak",
+}
 
 
 def analyze_prompt(prompt_text: str, sanitize: bool = True) -> AnalysisResult:
@@ -206,31 +229,59 @@ def analyze_prompt(prompt_text: str, sanitize: bool = True) -> AnalysisResult:
     )
 
 
-# ──────────────────── Combined Analysis (Regex + Gemini) ────────────────────
+# ──────────────────── Combined Analysis (Regex + ML + Gemini) ────────────────────
 
 async def analyze_prompt_combined(
     prompt_text: str, sanitize: bool = True, use_gemini: bool = False
 ) -> AnalysisResult:
     """
-    Two-stage prompt analysis pipeline:
+    Three-stage prompt analysis pipeline:
       Stage 1: Regex pattern matching (fast, deterministic)  — always runs
-      Stage 2: Gemini contextual analysis (catches obfuscated/novel leaks)
+      Stage 2: Local ML model (sentence-transformers + logistic regression) — always runs
+      Stage 3: Gemini contextual analysis (catches obfuscated/novel leaks)
                Only runs when use_gemini=True to conserve free-tier quota.
 
-    The final result merges both stages:
-      - Categories are unioned
-      - Risk score takes the higher of the two
-      - Decision follows the stricter of the two
+    The final result merges all stages:
+      - Categories are unioned (regex + ML + Gemini)
+      - Risk score takes the highest of the three
+      - Decision follows the strictest of the three
       - Sanitized prompt comes from the regex stage
+      - ML prediction dict is attached for frontend display
 
-    If Gemini is unavailable or skipped, the regex result is returned as-is.
+    If any stage fails, the pipeline continues with remaining stages.
     """
     from app.services.gemini_integration import analyze_prompt_with_gemini
 
     # Stage 1: regex-based analysis (always runs — free & fast)
     regex_result = analyze_prompt(prompt_text, sanitize=sanitize)
 
-    # Stage 2: Gemini contextual analysis (only if explicitly requested)
+    # Stage 2: local ML model (always runs — fast, no API cost)
+    ml_prediction = {}
+    ml_risk_score = 0.0
+    ml_decision = "allow"
+    ml_categories: list[str] = []
+    try:
+        from guardion_ai_model.inference import analyze_prompt as ml_analyze
+        ml_prediction = ml_analyze(prompt_text)
+        prediction = ml_prediction.get("prediction", "safe")
+        confidence = ml_prediction.get("confidence", 0.0)
+
+        # Only count ML prediction if confidence is above threshold
+        if prediction != "safe" and confidence >= 0.6:
+            base_risk = ML_RISK_MAP.get(prediction, 0.5)
+            ml_risk_score = round(base_risk * confidence, 2)
+            ml_categories = [ML_CATEGORY_MAP.get(prediction, f"ml_{prediction}")]
+
+            if ml_risk_score >= BLOCK_THRESHOLD:
+                ml_decision = "block"
+            elif ml_risk_score >= WARN_THRESHOLD:
+                ml_decision = "warn"
+    except FileNotFoundError:
+        logger.warning("ML model not trained yet — skipping ML stage")
+    except Exception as e:
+        logger.error(f"ML model error: {e}")
+
+    # Stage 3: Gemini contextual analysis (only if explicitly requested)
     gemini_result = None
     if use_gemini:
         try:
@@ -238,28 +289,29 @@ async def analyze_prompt_combined(
         except Exception:
             gemini_result = None
 
-    # If Gemini is unavailable, return regex-only result
-    if gemini_result is None:
-        return regex_result
+    # ── Merge all stages: take the strictest outcome ──
+    merged_categories = list(set(regex_result.detected_categories + ml_categories))
+    merged_score = round(max(regex_result.risk_score, ml_risk_score), 2)
+    merged_decision = regex_result.decision
+    gemini_reason = ""
 
-    # ── Merge results: take the stricter outcome ──
-    gemini_score = gemini_result.get("risk_score", 0.0)
-    gemini_decision = gemini_result.get("decision", "allow")
-    gemini_categories = gemini_result.get("categories", [])
-    gemini_reason = gemini_result.get("reason", "")
-
-    # Union of detected categories
-    merged_categories = list(set(regex_result.detected_categories + gemini_categories))
-
-    # Take the higher risk score
-    merged_score = round(max(regex_result.risk_score, gemini_score), 2)
-
-    # Take the stricter decision
+    # Merge ML decision (take stricter)
     decision_rank = {"allow": 0, "warn": 1, "block": 2}
-    if decision_rank.get(gemini_decision, 0) > decision_rank.get(regex_result.decision, 0):
-        merged_decision = gemini_decision
-    else:
-        merged_decision = regex_result.decision
+    if decision_rank.get(ml_decision, 0) > decision_rank.get(merged_decision, 0):
+        merged_decision = ml_decision
+
+    # Merge Gemini results if available
+    if gemini_result is not None:
+        gemini_score = gemini_result.get("risk_score", 0.0)
+        gemini_decision = gemini_result.get("decision", "allow")
+        gemini_categories = gemini_result.get("categories", [])
+        gemini_reason = gemini_result.get("reason", "")
+
+        merged_categories = list(set(merged_categories + gemini_categories))
+        merged_score = round(max(merged_score, gemini_score), 2)
+
+        if decision_rank.get(gemini_decision, 0) > decision_rank.get(merged_decision, 0):
+            merged_decision = gemini_decision
 
     # Re-derive decision from merged score if it disagrees
     if merged_score >= BLOCK_THRESHOLD and merged_decision != "block":
@@ -273,4 +325,5 @@ async def analyze_prompt_combined(
         detected_categories=merged_categories,
         sanitized_prompt=regex_result.sanitized_prompt,
         gemini_reason=gemini_reason,
+        ml_prediction=ml_prediction,
     )

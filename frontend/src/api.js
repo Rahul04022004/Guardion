@@ -82,3 +82,33 @@ export async function mlCompare(prompt, useGemini = true) {
   if (!res.ok) throw new Error(`ML Compare API error: ${res.status}`);
   return res.json();
 }
+
+/**
+ * Scan pasted source code for security vulnerabilities (pre-push checker).
+ * @param {string} code - Raw source code text.
+ * @param {string} filename - Optional filename for language detection.
+ */
+export async function scanCode(code, filename = "") {
+  const res = await fetch(`${API_BASE}/scan_code`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code, filename }),
+  });
+  if (!res.ok) throw new Error(`Code scan API error: ${res.status}`);
+  return res.json();
+}
+
+/**
+ * Scan an uploaded source code file for security vulnerabilities.
+ * @param {File} file - File object from an <input type="file">.
+ */
+export async function scanCodeFile(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch(`${API_BASE}/scan_code_file`, {
+    method: "POST",
+    body: formData,
+  });
+  if (!res.ok) throw new Error(`Code file scan API error: ${res.status}`);
+  return res.json();
+}

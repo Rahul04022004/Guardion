@@ -24,6 +24,7 @@ class PromptAnalysisResponse(BaseModel):
     detected_categories: list[str]
     sanitized_prompt: str | None = None  # optional redacted version
     reason: str = ""         # Gemini contextual explanation (empty if regex-only)
+    ml_prediction: Optional[dict] = None  # ML model output: {prediction, confidence, all_scores}
 
 
 # ──────────────────── Repo Scanning ────────────────────

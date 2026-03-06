@@ -15,6 +15,25 @@ export default function PromptTester({ onAnalyzed }) {
   const [error, setError] = useState(null);
   const [useGemini, setUseGemini] = useState(false);
   const [quota, setQuota] = useState(null);
+  const [copied, setCopied] = useState(false);
+
+  const copyToClipboard = async (text) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback for older browsers
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   // Fetch quota status on mount and after each analysis
   const refreshQuota = async () => {
@@ -455,8 +474,24 @@ export default function PromptTester({ onAnalyzed }) {
             <svg className="w-5 h-5 text-cyan-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
             </svg>
-            Regex + Gemini Analysis
+            Combined Analysis (Regex + ML{result.reason ? " + Gemini" : ""})
           </h3>
+
+          {/* ML Model Inline Prediction (from main pipeline) */}
+          {result.ml_prediction && result.ml_prediction.prediction && (
+            <div className="flex items-center gap-3 p-3 bg-purple-500/5 border border-purple-500/15 rounded-lg">
+              <div className="w-2 h-2 rounded-full bg-purple-400"></div>
+              <span className="text-xs text-purple-300 font-semibold uppercase tracking-wider">
+                ML Model
+              </span>
+              <span className="px-2 py-0.5 bg-purple-500/10 border border-purple-500/25 rounded text-xs text-purple-300 font-bold">
+                {formatCategory(result.ml_prediction.prediction)}
+              </span>
+              <span className="text-xs text-slate-400">
+                {((result.ml_prediction.confidence || 0) * 100).toFixed(1)}% confidence
+              </span>
+            </div>
+          )}
 
           {/* Decision banner */}
           {(() => {
@@ -514,10 +549,32 @@ export default function PromptTester({ onAnalyzed }) {
           {/* Sanitized prompt */}
           {result.sanitized_prompt && (
             <div>
-              <h4 className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">
-                Sanitized Output
-              </h4>
-              <pre className="bg-slate-900/60 border border-slate-700/40 rounded-md p-4 text-sm text-emerald-300/90 whitespace-pre-wrap overflow-auto max-h-48 font-mono">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  Sanitized Output
+                </h4>
+                <button
+                  onClick={() => copyToClipboard(result.sanitized_prompt)}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all duration-200 bg-slate-700/50 hover:bg-slate-600/60 border border-slate-600/40 hover:border-slate-500/50 text-slate-300 hover:text-white"
+                >
+                  {copied ? (
+                    <>
+                      <svg className="w-3.5 h-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                      </svg>
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9.75a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184" />
+                      </svg>
+                      Copy
+                    </>
+                  )}
+                </button>
+              </div>
+              <pre className="bg-slate-900/60 border border-slate-700/40 rounded-md p-4 text-sm text-emerald-300/90 whitespace-pre-wrap overflow-auto max-h-48 font-mono select-all">
                 {result.sanitized_prompt}
               </pre>
             </div>

@@ -87,6 +87,7 @@ async def analyze_prompt_endpoint(
         detected_categories=result.detected_categories,
         sanitized_prompt=result.sanitized_prompt,
         reason=result.gemini_reason,
+        ml_prediction=result.ml_prediction if result.ml_prediction else None,
     )
 
 
