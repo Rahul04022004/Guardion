@@ -4,6 +4,7 @@ Request/response models for API validation and serialization.
 """
 
 from pydantic import BaseModel
+from typing import Optional
 from datetime import datetime
 
 
@@ -13,6 +14,7 @@ class PromptAnalysisRequest(BaseModel):
     """Incoming prompt to analyze for sensitive data."""
     prompt: str
     source: str = "unknown"  # e.g. "chat.openai.com"
+    use_gemini: bool = False  # Set True to include Gemini analysis (costs API quota)
 
 
 class PromptAnalysisResponse(BaseModel):
@@ -104,3 +106,20 @@ class RemediationResponse(BaseModel):
     impact: str = ""
     remediation: str = ""
     recommended_upgrade: str = ""
+
+
+# ──────────────────── ML Model Comparison ────────────────────
+
+class MLCompareRequest(BaseModel):
+    """Request to classify a prompt with both local ML model and Gemini."""
+    prompt: str
+    use_gemini: bool = False
+
+
+class MLCompareResponse(BaseModel):
+    """Side-by-side comparison of local ML model and Gemini classifications."""
+    prompt: str
+    local_model: dict          # {prediction, confidence, all_scores}
+    gemini_analysis: Optional[dict] = None  # {prediction, confidence, explanation} — None when Gemini OFF
+    decision: str              # ALLOW / WARN / BLOCK
+    agreement: Optional[bool] = None  # Whether both models agree (None when Gemini OFF)

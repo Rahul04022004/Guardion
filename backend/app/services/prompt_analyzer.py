@@ -209,12 +209,13 @@ def analyze_prompt(prompt_text: str, sanitize: bool = True) -> AnalysisResult:
 # ──────────────────── Combined Analysis (Regex + Gemini) ────────────────────
 
 async def analyze_prompt_combined(
-    prompt_text: str, sanitize: bool = True
+    prompt_text: str, sanitize: bool = True, use_gemini: bool = False
 ) -> AnalysisResult:
     """
     Two-stage prompt analysis pipeline:
-      Stage 1: Regex pattern matching (fast, deterministic)
+      Stage 1: Regex pattern matching (fast, deterministic)  — always runs
       Stage 2: Gemini contextual analysis (catches obfuscated/novel leaks)
+               Only runs when use_gemini=True to conserve free-tier quota.
 
     The final result merges both stages:
       - Categories are unioned
@@ -222,18 +223,20 @@ async def analyze_prompt_combined(
       - Decision follows the stricter of the two
       - Sanitized prompt comes from the regex stage
 
-    If Gemini is unavailable, the regex result is returned as-is (fallback).
+    If Gemini is unavailable or skipped, the regex result is returned as-is.
     """
     from app.services.gemini_integration import analyze_prompt_with_gemini
 
-    # Stage 1: regex-based analysis (always runs)
+    # Stage 1: regex-based analysis (always runs — free & fast)
     regex_result = analyze_prompt(prompt_text, sanitize=sanitize)
 
-    # Stage 2: Gemini contextual analysis
-    try:
-        gemini_result = await analyze_prompt_with_gemini(prompt_text)
-    except Exception:
-        gemini_result = None
+    # Stage 2: Gemini contextual analysis (only if explicitly requested)
+    gemini_result = None
+    if use_gemini:
+        try:
+            gemini_result = await analyze_prompt_with_gemini(prompt_text)
+        except Exception:
+            gemini_result = None
 
     # If Gemini is unavailable, return regex-only result
     if gemini_result is None:

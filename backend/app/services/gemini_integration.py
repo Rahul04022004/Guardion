@@ -6,7 +6,7 @@ Two core functions:
   1. analyze_prompt_with_gemini() — contextual prompt security analysis
   2. generate_vulnerability_remediation() — context-aware CVE explanation & fix
 
-Uses google-generativeai SDK with gemini-2.0-flash model.
+Uses google-generativeai SDK with configurable model (default: gemini-2.5-flash).
 Falls back gracefully if the API key is missing or calls fail.
 """
 
@@ -37,15 +37,22 @@ def _ensure_configured() -> bool:
     return False
 
 
-def _get_model():
-    """Return a GenerativeModel instance for gemini-2.0-flash."""
+def _get_model(model_name: str | None = None):
+    """Return a GenerativeModel instance using the given or configured model name."""
     return genai.GenerativeModel(
-        "gemini-2.0-flash",
+        model_name or settings.GEMINI_MODEL,
         generation_config=genai.GenerationConfig(
-            temperature=0.2,        # Low temp for deterministic security analysis
-            max_output_tokens=1024,
+            temperature=0.1,        # Low temp for deterministic security analysis
+            max_output_tokens=512,  # Room for thinking tokens + JSON output
         ),
     )
+
+
+def _get_fallback_models() -> list[str]:
+    """Return ordered list of models to try (primary + fallbacks, deduped)."""
+    primary = settings.GEMINI_MODEL
+    fallbacks = settings.GEMINI_FALLBACK_MODELS
+    return [primary] + [m for m in fallbacks if m != primary]
 
 
 # ──────────────────── Safe JSON Parsing ────────────────────
@@ -131,134 +138,173 @@ USER PROMPT TO ANALYZE:
 async def analyze_prompt_with_gemini(prompt_text: str) -> dict | None:
     """
     Use Gemini to perform context-aware security analysis on a prompt.
-
-    This catches things regex alone may miss, such as:
-      - Obfuscated credentials
-      - Encoded secrets (base64)
-      - Context clues indicating sensitive data
-      - Natural-language descriptions of passwords
+    Includes caching and rate limiting to stay within free tier.
 
     Args:
         prompt_text: The raw prompt from the user.
 
     Returns:
         Dict with keys: risk_score, decision, categories, reason
-        Returns None if Gemini is unavailable (caller should fall back to regex).
+        Returns None if Gemini is unavailable or rate-limited.
     """
+    from app.services.gemini_cache import gemini_cache, gemini_rate_limiter
+
     if not _ensure_configured():
         logger.warning("Gemini API key not configured — skipping AI analysis")
         return None
 
-    try:
-        model = _get_model()
-        gemini_prompt = PROMPT_ANALYSIS_TEMPLATE.format(prompt_text=prompt_text)
+    # Check cache first — free!
+    cached = gemini_cache.get(prompt_text, prefix="prompt:")
+    if cached is not None:
+        logger.info(f"Gemini prompt analysis served from cache (stats: {gemini_cache.stats})")
+        return cached
 
-        response = model.generate_content(gemini_prompt)
-        result = _extract_json(response.text)
-
-        if result is None:
-            logger.error("Gemini returned unparseable response for prompt analysis")
-            return None
-
-        # Validate and normalize the response
-        risk_score = float(result.get("risk_score", 0))
-        risk_score = max(0.0, min(1.0, risk_score))
-
-        decision = result.get("decision", "allow").lower()
-        if decision not in ("allow", "warn", "block"):
-            # Derive decision from score
-            if risk_score >= 0.7:
-                decision = "block"
-            elif risk_score >= 0.3:
-                decision = "warn"
-            else:
-                decision = "allow"
-
-        categories = result.get("categories", [])
-        if isinstance(categories, str):
-            categories = [categories]
-
-        reason = result.get("reason", "")
-
-        return {
-            "risk_score": round(risk_score, 2),
-            "decision": decision,
-            "categories": categories,
-            "reason": reason,
-        }
-
-    except Exception as e:
-        logger.error(f"Gemini prompt analysis failed: {type(e).__name__}: {e}")
-        import traceback
-        logger.error(traceback.format_exc())
+    # Check rate limiter — avoid burning quota
+    if not gemini_rate_limiter.can_call():
+        logger.warning(f"Gemini rate limit reached ({gemini_rate_limiter.calls_remaining} calls remaining) — skipping")
         return None
+
+    # Truncate long prompts to save tokens (first 500 chars is enough for classification)
+    truncated = prompt_text[:500]
+    gemini_prompt = PROMPT_ANALYSIS_TEMPLATE.format(prompt_text=truncated)
+
+    # Try models in fallback order
+    last_error = None
+    for model_name in _get_fallback_models():
+        try:
+            model = _get_model(model_name)
+            response = model.generate_content(gemini_prompt)
+            result = _extract_json(response.text)
+
+            if result is None:
+                logger.error(f"Gemini ({model_name}) returned unparseable response for prompt analysis")
+                return None
+
+            # Validate and normalize the response
+            risk_score = float(result.get("risk_score", 0))
+            risk_score = max(0.0, min(1.0, risk_score))
+
+            decision = result.get("decision", "allow").lower()
+            if decision not in ("allow", "warn", "block"):
+                if risk_score >= 0.7:
+                    decision = "block"
+                elif risk_score >= 0.3:
+                    decision = "warn"
+                else:
+                    decision = "allow"
+
+            categories = result.get("categories", [])
+            if isinstance(categories, str):
+                categories = [categories]
+
+            reason = result.get("reason", "")
+
+            result_dict = {
+                "risk_score": round(risk_score, 2),
+                "decision": decision,
+                "categories": categories,
+                "reason": reason,
+            }
+
+            # Cache the successful result
+            gemini_cache.put(prompt_text, result_dict, prefix="prompt:")
+            logger.info(f"Gemini prompt analysis succeeded with model: {model_name}")
+            return result_dict
+
+        except Exception as model_err:
+            error_str = str(model_err)
+            if "RESOURCE_EXHAUSTED" in error_str or "quota" in error_str.lower():
+                logger.warning(f"Gemini model {model_name} quota exhausted, trying next...")
+                last_error = model_err
+                continue
+            else:
+                last_error = model_err
+                break
+
+    # All models failed
+    error_str = str(last_error) if last_error else "Unknown error"
+    logger.error(f"All Gemini models failed for prompt analysis: {error_str[:200]}")
+    # Detect quota exhaustion and trigger cooldown
+    if "RESOURCE_EXHAUSTED" in error_str or "quota" in error_str.lower():
+        gemini_rate_limiter.mark_quota_exhausted()
+    return None
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # FEATURE 2: Context-Aware Vulnerability Remediation
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-VULNERABILITY_TEMPLATE = """You are a cybersecurity expert helping developers fix vulnerabilities.
+# Slimmed-down vulnerability template (~50% fewer tokens)
+VULNERABILITY_TEMPLATE = """Analyze this CVE. Package:{package_name} v{version}, {cve_id}, CVSS:{cvss_score}. {description}
 
-Given the following vulnerability details, provide a context-aware analysis.
-
-Package: {package_name}
-Version: {version}
-CVE: {cve_id}
-CVSS Score: {cvss_score}
-Description: {description}
-
-Respond ONLY with valid JSON in exactly this format (no markdown, no extra text):
-{{
-  "summary": "<simple 1-2 sentence explanation of the vulnerability>",
-  "impact": "<what attackers could do if this is exploited>",
-  "remediation": "<specific steps developers should take to fix it>",
-  "recommended_upgrade": "<exact version to upgrade to, or 'latest' if unknown>"
-}}
-"""
+Respond JSON only:
+{{"summary":"<1 sentence>","impact":"<1 sentence>","remediation":"<fix steps>","recommended_upgrade":"<version or latest>"}}"""
 
 
 async def generate_vulnerability_remediation(vulnerability_data: dict) -> dict | None:
     """
-    Use Gemini to generate a context-aware explanation and remediation
-    for a specific CVE vulnerability.
-
-    Args:
-        vulnerability_data: Dict with keys:
-            package_name, version, cve_id, cvss_score, description
-
-    Returns:
-        Dict with keys: summary, impact, remediation, recommended_upgrade
-        Returns None if Gemini is unavailable (caller should fall back to template).
+    Use Gemini to generate a context-aware explanation and remediation.
+    Includes caching and rate limiting to stay within free tier.
     """
+    from app.services.gemini_cache import gemini_cache, gemini_rate_limiter
+
     if not _ensure_configured():
         logger.warning("Gemini API key not configured — skipping AI remediation")
         return None
 
-    try:
-        model = _get_model()
-        gemini_prompt = VULNERABILITY_TEMPLATE.format(
-            package_name=vulnerability_data.get("package_name", "unknown"),
-            version=vulnerability_data.get("version", "unknown"),
-            cve_id=vulnerability_data.get("cve_id", "N/A"),
-            cvss_score=vulnerability_data.get("cvss_score", 0.0),
-            description=vulnerability_data.get("description", "No description available"),
-        )
+    # Build a cache key from vulnerability details
+    cache_key = f"{vulnerability_data.get('package_name')}:{vulnerability_data.get('cve_id')}"
+    cached = gemini_cache.get(cache_key, prefix="vuln:")
+    if cached is not None:
+        logger.info("Gemini vulnerability remediation served from cache")
+        return cached
 
-        response = model.generate_content(gemini_prompt)
-        result = _extract_json(response.text)
-
-        if result is None:
-            logger.error("Gemini returned unparseable response for vulnerability remediation")
-            return None
-
-        return {
-            "summary": result.get("summary", ""),
-            "impact": result.get("impact", ""),
-            "remediation": result.get("remediation", ""),
-            "recommended_upgrade": result.get("recommended_upgrade", "latest"),
-        }
-
-    except Exception as e:
-        logger.error(f"Gemini vulnerability remediation failed: {e}")
+    if not gemini_rate_limiter.can_call():
+        logger.warning("Gemini rate limit reached — skipping vulnerability remediation")
         return None
+
+    gemini_prompt = VULNERABILITY_TEMPLATE.format(
+        package_name=vulnerability_data.get("package_name", "unknown"),
+        version=vulnerability_data.get("version", "unknown"),
+        cve_id=vulnerability_data.get("cve_id", "N/A"),
+        cvss_score=vulnerability_data.get("cvss_score", 0.0),
+        description=vulnerability_data.get("description", "No description available"),
+    )
+
+    # Try models in fallback order
+    last_error = None
+    for model_name in _get_fallback_models():
+        try:
+            model = _get_model(model_name)
+            response = model.generate_content(gemini_prompt)
+            result = _extract_json(response.text)
+
+            if result is None:
+                logger.error(f"Gemini ({model_name}) returned unparseable response for vulnerability remediation")
+                return None
+
+            result_dict = {
+                "summary": result.get("summary", ""),
+                "impact": result.get("impact", ""),
+                "remediation": result.get("remediation", ""),
+                "recommended_upgrade": result.get("recommended_upgrade", "latest"),
+            }
+            gemini_cache.put(cache_key, result_dict, prefix="vuln:")
+            return result_dict
+
+        except Exception as model_err:
+            error_str = str(model_err)
+            if "RESOURCE_EXHAUSTED" in error_str or "quota" in error_str.lower():
+                logger.warning(f"Gemini model {model_name} quota exhausted, trying next...")
+                last_error = model_err
+                continue
+            else:
+                last_error = model_err
+                break
+
+    # All models failed
+    error_str = str(last_error) if last_error else "Unknown error"
+    logger.error(f"All Gemini models failed for vulnerability remediation: {error_str[:200]}")
+    if "RESOURCE_EXHAUSTED" in error_str or "quota" in error_str.lower():
+        gemini_rate_limiter.mark_quota_exhausted()
+    return None
