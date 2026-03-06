@@ -308,3 +308,88 @@ async def generate_vulnerability_remediation(vulnerability_data: dict) -> dict |
     if "RESOURCE_EXHAUSTED" in error_str or "quota" in error_str.lower():
         gemini_rate_limiter.mark_quota_exhausted()
     return None
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# FEATURE 3: AI Code Fix
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CODE_FIX_TEMPLATE = """You are a senior security engineer. A code scanner found vulnerabilities in the following source code.
+
+Original code:
+```
+{code}
+```
+
+Vulnerabilities found:
+{vulnerabilities}
+
+Rewrite the ENTIRE code with all security vulnerabilities fixed. Keep the same functionality but make it secure.
+Rules:
+- Fix every listed vulnerability
+- Keep the same language and style
+- Add brief inline comments (// FIXED: ...) only on changed lines
+- Return ONLY the fixed code, no explanations before or after
+- Do NOT wrap in markdown code fences
+"""
+
+
+async def fix_code_with_gemini(code: str, vulnerabilities: list[dict]) -> str | None:
+    """
+    Use Gemini to rewrite code with all detected vulnerabilities fixed.
+    Returns the fixed code string, or None on failure.
+    """
+    from app.services.gemini_cache import gemini_rate_limiter
+
+    if not _ensure_configured():
+        logger.warning("Gemini API key not configured — skipping AI code fix")
+        return None
+
+    if not gemini_rate_limiter.can_call():
+        logger.warning("Gemini rate limit reached — skipping AI code fix")
+        return None
+
+    vuln_text = "\n".join(
+        f"- Line {v.get('line', '?')}: {v.get('type', 'unknown')} ({v.get('severity', 'MEDIUM')}) — {v.get('description', '')}"
+        for v in vulnerabilities
+    )
+
+    truncated_code = code[:8000]
+
+    gemini_prompt = CODE_FIX_TEMPLATE.format(
+        code=truncated_code,
+        vulnerabilities=vuln_text,
+    )
+
+    last_error = None
+    for model_name in _get_fallback_models():
+        try:
+            model = genai.GenerativeModel(
+                model_name,
+                generation_config=genai.GenerationConfig(
+                    temperature=0.1,
+                    max_output_tokens=4096,
+                ),
+            )
+            response = model.generate_content(gemini_prompt)
+            fixed = response.text.strip()
+            if fixed.startswith("```"):
+                fixed = re.sub(r"^```\w*\n?", "", fixed)
+                fixed = re.sub(r"\n?```$", "", fixed)
+            return fixed
+
+        except Exception as model_err:
+            error_str = str(model_err)
+            if "RESOURCE_EXHAUSTED" in error_str or "quota" in error_str.lower():
+                logger.warning(f"Gemini model {model_name} quota exhausted, trying next...")
+                last_error = model_err
+                continue
+            else:
+                last_error = model_err
+                break
+
+    error_str = str(last_error) if last_error else "Unknown error"
+    logger.error(f"All Gemini models failed for code fix: {error_str[:200]}")
+    if "RESOURCE_EXHAUSTED" in error_str or "quota" in error_str.lower():
+        gemini_rate_limiter.mark_quota_exhausted()
+    return None

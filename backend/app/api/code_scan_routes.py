@@ -13,6 +13,7 @@ from pydantic import BaseModel
 
 from app.services.code_scanner import scan_code
 from app.services.auth_service import get_optional_user
+from app.services.gemini_integration import fix_code_with_gemini
 from app.db.mongodb import code_scans_collection
 
 logger = logging.getLogger(__name__)
@@ -26,6 +27,13 @@ class CodeScanRequest(BaseModel):
     """JSON request: paste code directly."""
     code: str
     filename: str = ""  # Optional filename for language detection
+
+
+class CodeFixRequest(BaseModel):
+    """JSON request: fix code using AI."""
+    code: str
+    vulnerabilities: list[dict] = []
+    filename: str = ""
 
 
 class VulnerabilityItem(BaseModel):
@@ -158,3 +166,31 @@ async def scan_code_file(
         language_hint=result.language_hint,
         summary=result.summary,
     )
+
+
+@router.post("/fix_code")
+async def fix_code(
+    request: CodeFixRequest,
+    current_user: Optional[dict] = Depends(get_optional_user),
+):
+    """
+    Use Gemini AI to rewrite code with all detected vulnerabilities fixed.
+    Returns the fixed code as a string.
+    """
+    if not request.code.strip():
+        raise HTTPException(status_code=400, detail="Code cannot be empty")
+
+    if not request.vulnerabilities:
+        raise HTTPException(status_code=400, detail="No vulnerabilities provided to fix")
+
+    logger.info(f"AI code fix requested — {len(request.code)} chars, {len(request.vulnerabilities)} vulns")
+
+    fixed_code = await fix_code_with_gemini(request.code, request.vulnerabilities)
+
+    if fixed_code is None:
+        raise HTTPException(
+            status_code=503,
+            detail="AI code fix service is temporarily unavailable. Please try again later.",
+        )
+
+    return {"fixed_code": fixed_code}

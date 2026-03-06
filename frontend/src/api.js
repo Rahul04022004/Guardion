@@ -140,6 +140,22 @@ export async function scanCodeFile(file) {
   return res.json();
 }
 
+/**
+ * Fix code vulnerabilities using Gemini AI.
+ * @param {string} code - The original source code.
+ * @param {Array} vulnerabilities - List of detected vulnerabilities.
+ * @param {string} filename - Optional filename.
+ */
+export async function fixCode(code, vulnerabilities = [], filename = "") {
+  const res = await fetch(`${API_BASE}/fix_code`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ code, vulnerabilities, filename }),
+  });
+  if (!res.ok) throw new Error(`Fix code API error: ${res.status}`);
+  return res.json();
+}
+
 // ──────────────────── Auth API ────────────────────
 
 export async function apiSignup(name, email, password) {

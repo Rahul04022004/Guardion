@@ -93,16 +93,19 @@ export default function MetricsCards({ promptMetrics, repoMetrics }) {
       iconBg: "bg-brand-cyan/10",
       iconText: "text-brand-cyan",
       accent: "border-l-brand-cyan",
+      glow: "hover:shadow-[0_0_20px_rgba(6,182,212,0.08)]",
     },
     orange: {
       iconBg: "bg-brand-orange/10",
       iconText: "text-brand-orange",
       accent: "border-l-brand-orange",
+      glow: "hover:shadow-[0_0_20px_rgba(249,115,22,0.08)]",
     },
     red: {
       iconBg: "bg-red-500/10",
       iconText: "text-red-400",
       accent: "border-l-red-500",
+      glow: "hover:shadow-[0_0_20px_rgba(239,68,68,0.08)]",
     },
   };
 
@@ -117,17 +120,19 @@ export default function MetricsCards({ promptMetrics, repoMetrics }) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: i * 0.06 }}
             whileHover={{ y: -3, transition: { duration: 0.2 } }}
-            className={`bg-brand-card rounded-lg p-4 border border-white/5 border-l-2 ${cs.accent} hover:shadow-glow-cyan-sm transition-shadow`}
+            className={`group relative bg-brand-card rounded-lg p-4 border border-white/5 border-l-2 ${cs.accent} ${cs.glow} transition-all duration-200 overflow-hidden`}
           >
-            <div className="flex items-center justify-between mb-3">
-              <div className={`w-8 h-8 ${cs.iconBg} rounded-md flex items-center justify-center ${cs.iconText}`}>
+            {/* Subtle gradient hover glow */}
+            <div className={`absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-transparent group-hover:to-white/[0.02] transition-all duration-300`} />
+            <div className="relative flex items-center justify-between mb-3">
+              <div className={`w-9 h-9 ${cs.iconBg} rounded-lg flex items-center justify-center ${cs.iconText} ring-1 ring-white/5`}>
                 {card.icon}
               </div>
             </div>
-            <div className="text-2xl font-semibold text-white tracking-tight">
+            <div className="relative text-2xl font-bold text-white tracking-tight">
               {card.value}
             </div>
-            <div className="text-xs text-gray-500 mt-1 font-medium">{card.label}</div>
+            <div className="relative text-xs text-gray-500 mt-1 font-medium">{card.label}</div>
           </motion.div>
         );
       })}

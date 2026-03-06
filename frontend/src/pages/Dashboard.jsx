@@ -10,10 +10,10 @@ import { useAuth } from "../AuthContext";
 import { fetchDashboard } from "../api";
 import MetricsCards from "../components/MetricsCards";
 import PromptTester from "../components/PromptTester";
-import RepoScanner from "../components/RepoScanner";
-import SecureCodePanel from "../components/SecureCodePanel";
+import SecurityPipeline from "../components/SecurityPipeline";
 import RecentActivity from "../components/RecentActivity";
 import Charts from "../components/Charts";
+import OwaspTrending from "../components/OwaspTrending";
 
 export default function Dashboard() {
   const { user, logout, isAdmin, isAuthenticated } = useAuth();
@@ -63,20 +63,11 @@ export default function Dashboard() {
       ),
     },
     {
-      id: "repos",
-      label: "Repo Scanner",
+      id: "pipeline",
+      label: "Security Pipeline",
       icon: (
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-        </svg>
-      ),
-    },
-    {
-      id: "code",
-      label: "Code Checker",
-      icon: (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0 .5 1.5m-.5-1.5h-9.5m0 0-.5 1.5M9 11.25v1.5M12 9v3.75m3-6v6" />
         </svg>
       ),
     },
@@ -138,19 +129,22 @@ export default function Dashboard() {
 
       {/* Tabs */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-        <nav className="flex space-x-1 bg-brand-card border border-white/5 rounded-lg p-1">
+        <nav className="flex space-x-1 bg-brand-card/80 backdrop-blur border border-white/5 rounded-xl p-1.5 shadow-lg shadow-black/20">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+              className={`relative flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
                 activeTab === tab.id
-                  ? "bg-brand-orange/15 text-brand-orange shadow-sm border border-brand-orange/20"
+                  ? "bg-gradient-to-b from-brand-orange/20 to-brand-orange/10 text-brand-orange shadow-sm shadow-brand-orange/10 border border-brand-orange/20"
                   : "text-gray-500 hover:text-gray-300 hover:bg-white/5"
               }`}
             >
               {tab.icon}
               {tab.label}
+              {activeTab === tab.id && (
+                <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-brand-orange rounded-full" />
+              )}
             </button>
           ))}
         </nav>
@@ -183,6 +177,33 @@ export default function Dashboard() {
           >
             {activeTab === "overview" && dashboard && (
               <div className="space-y-6">
+                {/* Welcome Banner */}
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4 }}
+                  className="relative overflow-visible bg-gradient-to-r from-brand-card via-brand-card to-brand-orange/5 border border-white/5 rounded-lg p-6"
+                >
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-brand-orange/3 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4" />
+                  <div className="relative flex items-center justify-between">
+                    <div>
+                      <h2 className="text-lg font-semibold text-white tracking-tight">
+                        Welcome back{user?.name ? `, ${user.name}` : ""}
+                      </h2>
+                      <p className="text-sm text-gray-500 mt-1">
+                        Your security overview at a glance. Monitoring prompts, repositories, and threat intelligence.
+                      </p>
+                      <div className="mt-3">
+                        <OwaspTrending />
+                      </div>
+                    </div>
+                    <div className="hidden md:flex items-center gap-2 text-[11px] text-gray-500">
+                      <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
+                      Auto-refreshing every 30s
+                    </div>
+                  </div>
+                </motion.div>
+
                 <MetricsCards
                   promptMetrics={dashboard.prompt_metrics}
                   repoMetrics={dashboard.repo_metrics}
@@ -202,12 +223,8 @@ export default function Dashboard() {
               <PromptTester onAnalyzed={loadDashboard} />
             )}
 
-            {activeTab === "repos" && (
-              <RepoScanner onScanned={loadDashboard} />
-            )}
-
-            {activeTab === "code" && (
-              <SecureCodePanel />
+            {activeTab === "pipeline" && (
+              <SecurityPipeline onScanned={loadDashboard} />
             )}
           </motion.div>
         )}

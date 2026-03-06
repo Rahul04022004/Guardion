@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { scanRepo, getRemediation, getOwaspTrending } from "../api";
+import { scanRepo, getRemediation } from "../api";
 
 /**
  * RepoScanner Component
@@ -13,14 +13,6 @@ export default function RepoScanner({ onScanned }) {
   const [error, setError] = useState(null);
   const [remediations, setRemediations] = useState({});
   const [loadingRemediation, setLoadingRemediation] = useState({});
-  const [owaspTrending, setOwaspTrending] = useState([]);
-  const [showTrending, setShowTrending] = useState(true);
-
-  useEffect(() => {
-    getOwaspTrending()
-      .then(setOwaspTrending)
-      .catch(() => {});
-  }, []);
 
   const handleScan = async () => {
     if (!repoUrl.trim()) return;
@@ -34,8 +26,6 @@ export default function RepoScanner({ onScanned }) {
       const data = await scanRepo(repoUrl);
       setScanResult(data);
       onScanned?.();
-      // Refresh trending data after new scan
-      getOwaspTrending().then(setOwaspTrending).catch(() => {});
     } catch (err) {
       setError(err.message);
     } finally {
@@ -334,101 +324,6 @@ export default function RepoScanner({ onScanned }) {
                 All {scanResult.dependencies_scanned} dependencies passed the
                 security check.
               </p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* OWASP Top 10 Trending Section */}
-      {owaspTrending.length > 0 && (
-        <div className="bg-brand-card border border-white/5 rounded-lg p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m0-10.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.75c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751A11.959 11.959 0 0 0 12 3.714Z" />
-              </svg>
-              <h3 className="text-base font-semibold text-white">
-                OWASP Top 10 — Trending Vulnerabilities
-              </h3>
-            </div>
-            <button
-              onClick={() => setShowTrending(!showTrending)}
-              className="text-xs text-gray-500 hover:text-gray-300 transition"
-            >
-              {showTrending ? "Hide" : "Show"}
-            </button>
-          </div>
-
-          {showTrending && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {owaspTrending.map((item) => (
-                <div
-                  key={item.owasp_id}
-                  className="bg-brand-dark border border-white/5 rounded-md p-4 relative overflow-hidden"
-                >
-                  {/* Color accent bar */}
-                  <div
-                    className="absolute top-0 left-0 w-1 h-full rounded-l"
-                    style={{ backgroundColor: item.color }}
-                  />
-
-                  <div className="flex items-start justify-between mb-2 pl-2">
-                    <div>
-                      <span
-                        className="text-[11px] font-bold px-1.5 py-0.5 rounded"
-                        style={{
-                          color: item.color,
-                          backgroundColor: `${item.color}15`,
-                          border: `1px solid ${item.color}30`,
-                        }}
-                      >
-                        {item.owasp_id}
-                      </span>
-                      <h4 className="text-sm font-medium text-white mt-1.5">
-                        {item.owasp_category}
-                      </h4>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-lg font-bold text-white">
-                        {item.vuln_count}
-                      </div>
-                      <div className="text-[10px] text-gray-500">found</div>
-                    </div>
-                  </div>
-
-                  <p className="text-[11px] text-gray-500 line-clamp-2 mb-3 pl-2">
-                    {item.description}
-                  </p>
-
-                  <div className="flex items-center gap-3 pl-2">
-                    {item.avg_cvss > 0 && (
-                      <span className="text-[10px] text-gray-400">
-                        Avg CVSS: <span className="text-brand-orange font-semibold">{item.avg_cvss}</span>
-                      </span>
-                    )}
-                    {item.max_cvss > 0 && (
-                      <span className="text-[10px] text-gray-400">
-                        Max: <span className="text-red-400 font-semibold">{item.max_cvss}</span>
-                      </span>
-                    )}
-                    {item.affected_packages?.length > 0 && (
-                      <span className="text-[10px] text-gray-500">
-                        {item.affected_packages.length} pkg{item.affected_packages.length > 1 ? "s" : ""}
-                      </span>
-                    )}
-                  </div>
-
-                  {item.sample_cves?.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-2 pl-2">
-                      {item.sample_cves.filter(c => c !== "N/A").slice(0, 3).map((cve, i) => (
-                        <span key={i} className="text-[9px] font-mono bg-white/5 text-gray-500 px-1.5 py-0.5 rounded">
-                          {cve}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
             </div>
           )}
         </div>
