@@ -1,67 +1,65 @@
-# 🛡️ Guardion — AI Prompt Security & Repository Vulnerability Scanner
+# 🛡️ Guardion — AI-Powered Security Intelligence Platform
 
-> **Protect what you type. Secure what you ship.**
+> **Protect what you type. Secure what you ship. Fix what's broken.**
 
-Guardion is an AI-powered security platform that shields developers from two critical risks:
+Guardion is a full-stack cybersecurity SaaS platform that protects developers across three critical surfaces:
 
-1. **Leaking secrets & sensitive data** in AI chat prompts (ChatGPT, Claude, Gemini)
-2. **Shipping vulnerable dependencies** in software projects
-3. **Prompt injection & jailbreak attacks** against AI systems
+1. **AI Prompt Security** — Intercepts and scans prompts sent to ChatGPT, Claude & Gemini for leaked secrets, PII, and prompt injection attacks
+2. **Repository Vulnerability Scanning** — Scans GitHub repos for vulnerable dependencies via OSV/NVD databases with AI-powered remediation
+3. **Static Code Analysis** — Detects hardcoded credentials, command injection, SQL injection, weak cryptography, and more — with AI-powered fix suggestions
 
-Built with **FastAPI**, **React**, **Google Gemini AI**, and a **Chrome Extension**.
+Built with **FastAPI**, **React 18**, **MongoDB Atlas**, **Google Gemini AI**, a custom **ML classifier**, and a **Chrome Extension**.
 
 ---
 
-## 🎯 What It Does
+## ✨ Key Features
 
-### Prompt Security (Data Loss Prevention + Prompt Injection Detection)
-
-When you type in ChatGPT, Claude, or Gemini — Guardion intercepts the prompt **before** it's sent and scans it for:
-
-| Threat Type | Examples |
-|---|---|
-| **API Keys** | `sk-...`, `AKIA...`, `api_key=...`, GitHub tokens |
-| **Credentials** | Passwords, Bearer tokens, JWTs, OAuth tokens |
-| **Private Keys** | PEM, SSH, PGP private keys |
-| **Database Secrets** | `postgres://`, `mongodb+srv://`, connection strings |
-| **Personal Data (PII)** | Credit cards, SSNs, phone numbers, emails |
-| **Prompt Injection** | "Reveal your system prompt", "Show hidden instructions" |
-| **Jailbreak Attempts** | DAN prompts, "ignore previous instructions", "developer mode" |
-| **Role Manipulation** | "You are now unrestricted", "bypass safety filters" |
-
-**17 regex pattern categories** + **Gemini AI contextual analysis** work together — regex provides fast, deterministic detection while Gemini catches obfuscated or novel attacks that regex alone would miss.
-
-### Repository Vulnerability Scanning
-
-Paste any **GitHub repository URL** and Guardion will:
-- Clone the repo and parse dependency files (`requirements.txt`, `package.json`, `pom.xml`, `go.mod`, etc.)
-- Query the **OSV (Open Source Vulnerabilities)** database for every dependency
-- Return CVEs with severity ratings (Critical/High/Medium/Low) and CVSS scores
-- Generate **AI-powered remediation** using Gemini — explaining the vulnerability, its impact, and exactly how to fix it
+| Feature | Description |
+|---------|-------------|
+| **3-Stage Prompt Analysis** | Regex (17 patterns) → Custom ML model → Gemini AI contextual analysis |
+| **Chrome Extension** | Manifest V3 — intercepts prompts in real-time on ChatGPT, Claude & Gemini |
+| **Repo Vulnerability Scanner** | Clones repos, parses dependencies, queries OSV API, enriches with NVD CVSS scores |
+| **Static Code Analyzer** | 8 vulnerability categories with security scoring (0–100) |
+| **AI Fix Code** | Gemini generates production-ready fixes for vulnerable code — copyable & exportable |
+| **Security Pipeline** | Unified 3-stage flow: Repo Scanner → Static Analyzer → AI Fix Suggestion |
+| **OWASP Top 10 Mapping** | Vulnerabilities auto-classified into OWASP 2021 categories |
+| **ML Model Comparison** | Side-by-side local ML vs Gemini AI classification with confidence scores |
+| **Multi-User SaaS** | JWT authentication, bcrypt password hashing, role-based access (user/admin) |
+| **Admin Dashboard** | Platform-wide analytics: all users, scan logs, prompt logs, system stats |
+| **Economy Mode** | LRU cache (500 entries, 1h TTL), rate limiter (10 RPM), fallback model chain |
+| **Advanced Analytics** | 4-panel dashboard: donut chart, gradient bars, score trend area chart, security posture gauge |
 
 ---
 
 ## 🏗️ Architecture
 
 ```
-┌──────────────────────────┐       ┌──────────────────────────────┐
-│   Chrome Extension       │──────▶│   FastAPI Backend (Python)   │
-│   (Manifest V3)          │       │                              │
-│   Intercepts prompts on: │       │  ┌────────────────────────┐  │
-│   • ChatGPT              │       │  │ Prompt Analyzer        │  │
-│   • Claude               │       │  │  • 17 regex patterns   │  │
-│   • Gemini               │       │  │  • Gemini AI analysis  │  │
-└──────────────────────────┘       │  ├────────────────────────┤  │
-                                   │  │ Repo Scanner           │  │──▶ OSV API
-┌──────────────────────────┐       │  │  • Dependency parser   │  │──▶ Gemini API
-│   React Dashboard        │──────▶│  │  • CVE lookup          │  │
-│   (Vite + Tailwind CSS)  │       │  ├────────────────────────┤  │
-│   • Real-time metrics    │       │  │ Gemini Integration     │  │
-│   • Prompt tester        │       │  │  • Context-aware AI    │  │
-│   • Repo scanner UI      │       │  │  • Smart remediation   │  │
-│   • Analytics charts     │       │  └────────────────────────┘  │
-└──────────────────────────┘       │       MongoDB Atlas          │
-                                   └──────────────────────────────┘
+┌──────────────────────────┐       ┌──────────────────────────────────────┐
+│   Chrome Extension       │──────▶│   FastAPI Backend (Python)           │
+│   (Manifest V3)          │       │                                      │
+│   Intercepts prompts on: │       │  ┌──────────────────────────────┐    │
+│   • ChatGPT              │       │  │ Prompt Analyzer              │    │
+│   • Claude               │       │  │  • 17 regex patterns         │    │
+│   • Gemini               │       │  │  • ML classifier (MiniLM)    │    │
+│                          │       │  │  • Gemini AI analysis        │    │
+└──────────────────────────┘       │  ├──────────────────────────────┤    │
+                                   │  │ Repo Scanner                 │    │──▶ OSV API
+┌──────────────────────────┐       │  │  • Dependency parser         │    │──▶ NVD API
+│   React Dashboard        │──────▶│  │  • CVE lookup & enrichment   │    │──▶ Gemini API
+│   (Vite + Tailwind CSS)  │       │  ├──────────────────────────────┤    │
+│   • Security metrics     │       │  │ Static Code Analyzer         │    │
+│   • Prompt tester        │       │  │  • 8 vuln categories         │    │
+│   • Security pipeline    │       │  │  • Security scoring 0–100    │    │
+│   • 4-panel analytics    │       │  ├──────────────────────────────┤    │
+│   • Admin panel          │       │  │ AI Fix Code (Gemini)         │    │
+└──────────────────────────┘       │  │  • Context-aware fixes       │    │
+                                   │  │  • Copy & export             │    │
+                                   │  ├──────────────────────────────┤    │
+                                   │  │ Auth (JWT + bcrypt)          │    │
+                                   │  │  • User / Admin roles        │    │
+                                   │  └──────────────────────────────┘    │
+                                   │          MongoDB Atlas               │
+                                   └──────────────────────────────────────┘
 ```
 
 ---
@@ -72,6 +70,7 @@ Paste any **GitHub repository URL** and Guardion will:
 
 - **Python 3.10+**
 - **Node.js 18+**
+- **MongoDB Atlas** account (or local MongoDB)
 - **Google Gemini API Key** — [Get one free](https://aistudio.google.com/apikey)
 
 ### 1. Backend
@@ -79,21 +78,11 @@ Paste any **GitHub repository URL** and Guardion will:
 ```bash
 cd backend
 pip install -r requirements.txt
-```
-
-Create a `.env` file:
-
-```env
-GEMINI_API_KEY=your_gemini_api_key_here
-```
-
-Start the server:
-
-```bash
+cp .env.example .env   # Fill in your API keys
 python -m app.main
 ```
 
-API runs at **http://localhost:8000** | Swagger docs at **http://localhost:8000/docs**
+API runs at **http://localhost:8000** — Swagger docs at **http://localhost:8000/docs**
 
 ### 2. Frontend Dashboard
 
@@ -112,27 +101,80 @@ Dashboard opens at **http://localhost:5173**
 3. Click **Load unpacked** → select the `extension/` folder
 4. Visit ChatGPT / Claude / Gemini — Guardion is now active
 
+### 4. ML Model Training (Optional)
+
+```bash
+cd backend
+python -m guardion_ai_model.dataset_generator   # Generate ~500 labeled prompts
+python -m guardion_ai_model.train_model          # Train classifier
+```
+
+---
+
+## ⚙️ Environment Variables
+
+Create `backend/.env`:
+
+```env
+GEMINI_API_KEY=your_gemini_api_key_here
+MONGO_URI=mongodb+srv://user:pass@cluster.mongodb.net
+MONGO_DB_NAME=guardion
+JWT_SECRET=your_jwt_secret_here
+NVD_API_KEY=your_nvd_api_key_here          # Optional — enriches CVE data
+HOST=0.0.0.0
+PORT=8000
+CORS_ORIGINS=http://localhost:3000,http://localhost:5173,chrome-extension://*
+GEMINI_MODEL=gemini-2.5-flash-lite         # Default model
+ECONOMY_MODE=true                          # Quota-safe mode
+GEMINI_RPM_LIMIT=10                        # Rate limit
+JWT_ALGORITHM=HS256
+JWT_EXPIRE_MINUTES=1440
+```
+
 ---
 
 ## 📡 API Endpoints
 
+### Authentication
+
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/` | Health check & service status |
-| `POST` | `/api/analyze_prompt` | Analyze a prompt for sensitive data & injection attacks |
-| `POST` | `/api/scan_repo` | Scan a GitHub repo for vulnerable dependencies |
-| `POST` | `/api/remediate` | Get AI-powered fix for a specific CVE |
-| `GET` | `/api/dashboard` | Aggregated metrics & recent activity |
+| `POST` | `/auth/signup` | Register a new user |
+| `POST` | `/auth/login` | Login & receive JWT |
+| `GET` | `/auth/me` | Get current user profile |
+
+### Core Security
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/analyze_prompt` | Analyze prompt for sensitive data & injection attacks |
+| `POST` | `/api/ml_compare` | Side-by-side ML vs Gemini classification |
+| `GET` | `/api/quota_status` | Check Gemini API quota |
+| `POST` | `/api/scan_repo` | Scan GitHub repo for vulnerable dependencies |
+| `POST` | `/api/remediate` | AI-powered fix for a specific CVE |
+| `GET` | `/api/owasp_trending` | OWASP Top 10 trending categories |
+| `POST` | `/api/scan_code` | Static code analysis (paste or file upload) |
+| `POST` | `/api/fix_code` | AI-generated code fix via Gemini |
+| `GET` | `/api/dashboard` | User-scoped metrics & recent activity |
+
+### Admin
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/admin/users` | All registered users |
+| `GET` | `/admin/stats` | Platform-wide statistics |
+| `GET` | `/admin/prompt_logs` | All prompt analysis logs |
+| `GET` | `/admin/repo_scans` | All repository scan logs |
+| `GET` | `/admin/code_scans` | All code scan logs |
 
 ### Example: Analyze a Prompt
 
 ```bash
 curl -X POST http://localhost:8000/api/analyze_prompt \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -d '{"prompt": "My API key is sk-abc123def456ghi789jkl012mno345"}'
 ```
-
-**Response:**
 
 ```json
 {
@@ -144,33 +186,31 @@ curl -X POST http://localhost:8000/api/analyze_prompt \
 }
 ```
 
-### Example: Scan a Repository
-
-```bash
-curl -X POST http://localhost:8000/api/scan_repo \
-  -H "Content-Type: application/json" \
-  -d '{"repo_url": "https://github.com/user/repo"}'
-```
-
 ---
 
 ## 🔍 Detection Engine
 
-### Two-Stage Analysis Pipeline
+### Three-Stage Prompt Analysis
 
 ```
 User Prompt
      │
      ▼
 ┌─────────────────────┐
-│  Stage 1: Regex     │  Fast, deterministic pattern matching
-│  (17 categories)    │  Catches known secret formats
+│  Stage 1: Regex     │  17 pattern categories — fast, deterministic
+│  (0.3ms avg)        │  Catches known secret formats
 └─────────┬───────────┘
           │
           ▼
 ┌─────────────────────┐
-│  Stage 2: Gemini AI │  Contextual analysis
-│  (gemini-2.0-flash) │  Catches obfuscated/novel leaks
+│  Stage 2: ML Model  │  all-MiniLM-L6-v2 embeddings → Logistic Regression
+│  (sentence-transformers) │  5 categories: safe, pii, credential, financial, secret
+└─────────┬───────────┘
+          │
+          ▼
+┌─────────────────────┐
+│  Stage 3: Gemini AI │  Context-aware analysis (gemini-2.5-flash)
+│  (with caching)     │  Catches obfuscated/novel leaks & prompt injection
 └─────────┬───────────┘
           │
           ▼
@@ -214,9 +254,22 @@ User Prompt
 
 | Category | Weight | What It Catches |
 |----------|--------|----------------|
-| `jailbreak_attempt` | 1.0 | DAN prompts, "do anything now", bypass safety, developer mode |
-| `role_manipulation` | 0.95 | "Ignore previous instructions", "you are in debugging mode" |
+| `jailbreak_attempt` | 1.0 | DAN prompts, "do anything now", bypass safety |
+| `role_manipulation` | 0.95 | "Ignore previous instructions", "debugging mode" |
 | `prompt_injection` | 0.9 | "Reveal system prompt", "show hidden instructions" |
+
+### Static Code Analysis (8 categories)
+
+| Category | What It Detects |
+|----------|----------------|
+| Hardcoded Credentials | Passwords, API keys, tokens embedded in source code |
+| Private Keys | PEM, SSH, PGP keys in code files |
+| Command Injection | `os.system()`, `subprocess.call()` with user input |
+| Eval / Code Execution | `eval()`, `exec()`, `Function()` with dynamic input |
+| SQL Injection | String-concatenated SQL queries |
+| Insecure Deserialization | `pickle.loads()`, `yaml.load()` without safe loader |
+| Path Traversal | Unsanitized file path construction (`../`) |
+| Weak Cryptography | MD5, SHA1, DES, RC4, ECB mode usage |
 
 ---
 
@@ -227,45 +280,63 @@ Guardion/
 ├── backend/
 │   ├── app/
 │   │   ├── api/
-│   │   │   ├── prompt_routes.py      # Prompt analysis endpoint
-│   │   │   ├── repo_routes.py        # Repo scanning & remediation
-│   │   │   └── dashboard_routes.py   # Dashboard metrics
-│   │   ├── models/
-│   │   │   └── schemas.py            # Pydantic request/response schemas
-│   │   ├── db/
-│   │   │   └── mongodb.py            # MongoDB Atlas connection & collections
+│   │   │   ├── auth_routes.py         # Signup, login, user profile
+│   │   │   ├── prompt_routes.py       # Prompt analysis & ML comparison
+│   │   │   ├── repo_routes.py         # Repo scanning & AI remediation
+│   │   │   ├── code_scan_routes.py    # Static analysis & AI fix code
+│   │   │   ├── dashboard_routes.py    # User-scoped dashboard metrics
+│   │   │   └── admin_routes.py        # Admin platform analytics
 │   │   ├── services/
-│   │   │   ├── prompt_analyzer.py    # Regex + combined analysis pipeline
-│   │   │   ├── gemini_integration.py # Gemini AI context-aware analysis
-│   │   │   ├── gemini_service.py     # AI-powered vulnerability remediation
-│   │   │   ├── repo_scanner.py       # Git clone, parse deps, query OSV
-│   │   │   ├── owasp_service.py      # OWASP Top 10 classification engine
-│   │   │   ├── auth_service.py       # JWT auth + bcrypt password hashing
-│   │   │   └── nvd_service.py        # NVD/CVE enrichment service
-│   │   ├── config.py                 # Environment & app settings
-│   │   └── main.py                   # FastAPI app entry point
+│   │   │   ├── prompt_analyzer.py     # Regex + ML + Gemini pipeline
+│   │   │   ├── gemini_integration.py  # Gemini AI analysis & code fixing
+│   │   │   ├── gemini_service.py      # AI vulnerability remediation
+│   │   │   ├── gemini_cache.py        # LRU cache + rate limiter
+│   │   │   ├── repo_scanner.py        # Git clone, dep parsing, OSV queries
+│   │   │   ├── code_scanner.py        # Static code analysis engine
+│   │   │   ├── nvd_service.py         # NVD API enrichment + caching
+│   │   │   ├── owasp_service.py       # OWASP Top 10 classification
+│   │   │   └── auth_service.py        # JWT + bcrypt + role guards
+│   │   ├── db/
+│   │   │   └── mongodb.py             # MongoDB Atlas connection
+│   │   ├── config.py                  # Environment settings
+│   │   └── main.py                    # FastAPI entry point
+│   ├── guardion_ai_model/
+│   │   ├── dataset_generator.py       # Synthetic training data (~500 samples)
+│   │   ├── train_model.py             # ML model training pipeline
+│   │   ├── inference.py               # Model inference & classification
+│   │   └── gemini_compare.py          # ML vs Gemini comparison
 │   ├── requirements.txt
 │   └── .env.example
 ├── frontend/
 │   ├── src/
+│   │   ├── pages/
+│   │   │   ├── Landing.jsx            # Animated SaaS landing page
+│   │   │   ├── Login.jsx              # User login
+│   │   │   ├── Signup.jsx             # User registration
+│   │   │   ├── Dashboard.jsx          # Main dashboard (3 tabs)
+│   │   │   └── AdminDashboard.jsx     # Admin-only analytics
 │   │   ├── components/
-│   │   │   ├── Header.jsx            # Navigation bar
-│   │   │   ├── MetricsCards.jsx       # Security stats cards
-│   │   │   ├── Charts.jsx            # Analytics visualizations
-│   │   │   ├── PromptTester.jsx      # Interactive prompt testing UI
-│   │   │   ├── RepoScanner.jsx       # Repository scan interface
-│   │   │   └── RecentActivity.jsx    # Activity feed
-│   │   ├── api.js                    # API client
-│   │   ├── App.jsx                   # Root component
-│   │   └── main.jsx                  # Entry point
+│   │   │   ├── SecurityPipeline.jsx   # 3-stage security pipeline UI
+│   │   │   ├── Charts.jsx             # 4-panel analytics (Recharts)
+│   │   │   ├── MetricsCards.jsx       # 8 security metric cards
+│   │   │   ├── PromptTester.jsx       # Interactive prompt tester
+│   │   │   ├── SecureCodePanel.jsx    # Code scanner + AI fix
+│   │   │   ├── RepoScanner.jsx        # Repo scan interface
+│   │   │   ├── OwaspTrending.jsx      # OWASP Top 10 hover widget
+│   │   │   ├── RecentActivity.jsx     # Activity feed
+│   │   │   ├── Header.jsx             # Dashboard header
+│   │   │   └── Navbar.jsx             # Landing page navbar
+│   │   ├── api.js                     # API client
+│   │   ├── App.jsx                    # Root + routing
+│   │   └── main.jsx                   # Entry point
 │   ├── package.json
 │   └── vite.config.js
 ├── extension/
-│   ├── manifest.json                 # Manifest V3 config
-│   ├── background.js                 # Service worker
-│   ├── content.js                    # Injected into AI chat pages
-│   ├── popup.html / popup.js         # Extension popup UI
-│   └── guardion.css                  # Overlay styles
+│   ├── manifest.json                  # Manifest V3 config
+│   ├── background.js                  # Service worker
+│   ├── content.js                     # AI chat page interceptor
+│   ├── popup.html / popup.js          # Extension popup UI
+│   └── guardion.css                   # Overlay styles
 └── README.md
 ```
 
@@ -275,25 +346,16 @@ Guardion/
 
 | Layer | Technology |
 |-------|-----------|
-| **Backend** | Python, FastAPI, MongoDB Atlas, PyMongo, Uvicorn |
-| **AI Engine** | Google Gemini 2.0 Flash (`google-generativeai` SDK) |
-| **Vuln Database** | OSV API (Open Source Vulnerabilities) |
-| **Frontend** | React 18, Vite, Tailwind CSS, Recharts |
-| **Extension** | Chrome Manifest V3, Service Worker |
+| **Backend** | Python 3.10+, FastAPI 0.104, Uvicorn, Pydantic 2.5 |
+| **Database** | MongoDB Atlas (PyMongo 4.6+) |
+| **AI Engine** | Google Gemini 2.5 Flash (google-generativeai SDK) |
+| **ML Model** | sentence-transformers (all-MiniLM-L6-v2) + scikit-learn |
+| **Auth** | JWT (python-jose) + bcrypt (passlib) |
+| **Vuln APIs** | OSV API, NVD API v2.0 |
+| **Frontend** | React 18.2, Vite 7.3, Tailwind CSS 3.4, Framer Motion 12 |
+| **Charts** | Recharts 2.10 (Pie, Bar, Area, RadialBar) |
+| **Extension** | Chrome Manifest V3 |
 | **Languages Scanned** | Python, JavaScript/Node.js, Java (Maven), Go |
-
----
-
-## ⚙️ Environment Variables
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `GEMINI_API_KEY` | Yes | Google Gemini API key for AI analysis |
-| `MONGO_URI` | Yes | MongoDB Atlas connection string |
-| `JWT_SECRET` | Yes | Secret key for JWT token signing |
-| `NVD_API_KEY` | No | NVD API key for CVE enrichment |
-
-Create `backend/.env` with your keys. The `.gitignore` ensures they're never committed.
 
 ---
 
@@ -302,20 +364,36 @@ Create `backend/.env` with your keys. The `.gitignore` ensures they're never com
 1. **Content script** (`content.js`) is injected into ChatGPT, Claude, and Gemini pages
 2. When you type a prompt and press send, the extension **intercepts** the text
 3. It sends the prompt to the Guardion backend (`POST /api/analyze_prompt`)
-4. If the prompt is **BLOCKED**, a warning overlay appears and the prompt is prevented from being sent
-5. If **WARNED**, you see a notice but can choose to proceed
-6. The extension popup shows your protection stats
+4. If **BLOCKED** — a warning overlay prevents the prompt from being sent
+5. If **WARNED** — a notice appears but you can choose to proceed
+6. If **ALLOWED** — the prompt goes through normally
+7. The extension popup shows your real-time protection stats
 
 ---
 
-## 📊 Dashboard Features
+## 📊 Dashboard
 
-- **Security Metrics** — Total prompts analyzed, blocked, warned, allowed
-- **Vulnerability Stats** — Repos scanned, CVEs found by severity
-- **Trend Charts** — Visual analytics over time (Recharts)
-- **Prompt Tester** — Interactive tool to test prompts with preset examples
-- **Repo Scanner** — Paste a GitHub URL and scan for vulnerabilities live
-- **Activity Feed** — Recent prompts and scan results
+The dashboard has three main tabs:
+
+### Overview
+- **Welcome Banner** with OWASP Top 10 hover widget
+- **8 Metric Cards** — Prompts analyzed/blocked/warned, credential leaks, repos scanned, vulnerabilities, critical/high counts
+- **4 Chart Panels:**
+  - Prompt Risk Distribution (donut with center stats + glow effect)
+  - Vulnerability Severity (gradient bar chart)
+  - Security Score Trend (area chart from recent scans)
+  - Security Posture Gauge (radial gauge with Strong/Moderate/At Risk)
+- **Recent Activity Feed** — latest prompts and scans
+
+### Prompt Security
+- **Interactive Prompt Tester** — paste any prompt and see real-time analysis
+- **ML vs Gemini Comparison** — side-by-side classification results with confidence scores
+- **Preset Examples** — quick-test with known attack patterns
+
+### Security Pipeline
+- **Stage 1: Repository Scanner** — paste GitHub URL → scans dependencies via OSV
+- **Stage 2: Static Code Analyzer** — paste code or upload files → 8 vuln categories, scored 0–100
+- **Stage 3: AI Fix Suggestion** — Gemini generates context-aware production-ready fixes, copyable & exportable
 
 ---
 
