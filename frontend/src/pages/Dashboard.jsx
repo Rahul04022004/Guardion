@@ -211,6 +211,7 @@ export default function Dashboard() {
                 <Charts
                   promptMetrics={dashboard.prompt_metrics}
                   repoMetrics={dashboard.repo_metrics}
+                  recentScans={dashboard.recent_scans}
                 />
                 <RecentActivity
                   recentPrompts={dashboard.recent_prompts}
